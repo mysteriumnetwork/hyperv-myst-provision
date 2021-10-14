@@ -1,0 +1,6 @@
+#!/sbin/openrc-run
+name="Mysterium Network Node"
+command="myst"
+command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard"
+command_background=true
+pidfile="/run/${RC_SVCNAME}.pid"
