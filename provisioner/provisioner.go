@@ -13,19 +13,19 @@ type Provisioner struct {
 	NodeVersion string
 }
 
-func NewProvisioner(shell *powershell.PowerShell) (*Provisioner, error) {
-	nodeVersion, err := latestNodeVersion()
+func NewProvisioner(shell *powershell.PowerShell, nodeVersion string) (*Provisioner, error) {
+	resolvedNodeVersion, err := latestNodeVersionOrProvided(nodeVersion)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Provisioner{shell: shell, NodeVersion: nodeVersion}, nil
+	return &Provisioner{shell: shell, NodeVersion: resolvedNodeVersion}, nil
 }
 
-func (p *Provisioner) InstallMystClean(privateKeyPath, user, ip string) error {
+func (p *Provisioner) InstallMystClean(privateKeyPath, user, ip, scriptURL string) error {
 	ssh := fmt.Sprintf("ssh -i %s %s@%s", privateKeyPath, user, ip)
 	p.exec(ssh, "rm install-myst.sh")
-	err := p.exec(ssh, "wget https://raw.githubusercontent.com/mysteriumnetwork/hyperv-myst-provision/master/assets/alpine/install-myst.sh")
+	err := p.exec(ssh, "wget "+scriptURL)
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,15 @@ func (p *Provisioner) CopyKeystoreRecursive(source, target, privateKeyPath, user
 		))
 }
 
-func latestNodeVersion() (string, error) {
+func latestNodeVersionOrProvided(nodeVersion string) (string, error) {
+	if nodeVersion != "" {
+		_, err := gitRelease("mysteriumnetwork", "node", nodeVersion)
+		if err != nil {
+			return "", err
+		}
+		return nodeVersion, nil
+	}
+
 	releases, err := gitReleases("mysteriumnetwork", "node", 1)
 	if err != nil {
 		return "", err

@@ -4,21 +4,23 @@ import (
 	"errors"
 	"github.com/mysteriumnetwork/hyperv-node/common"
 	"github.com/mysteriumnetwork/hyperv-node/powershell"
-	"strings"
 )
 
 const networkSwitchName = "Myst Bridge Switch"
 
 func (h *HyperV) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
-	out, err := h.shell.Execute("Get-VMSwitch")
-	if err != nil {
+	out, err := h.shell.Execute(
+		`Get-VMSwitch `,
+		`| Where Name -eq`,
+		common.WrapInQuotes(networkSwitchName),
+		`| Select -ExpandProperty Name -First 1`,
+	)
+
+	if err := common.OutWithIt(out, err); err != nil {
 		return err
 	}
-	if out.IsErr() {
-		return out.GetError()
-	}
 
-	exist := strings.Contains(out.OutString(), networkSwitchName)
+	exist := !out.IsEmpty()
 
 	if !exist {
 		ifName, err := findInterfaceUsedAsInternetGateway(h.shell)
@@ -47,6 +49,13 @@ func (h *HyperV) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	))
 }
 
+func (h *HyperV) DisconnectVMNetworkSwitch() error {
+	return common.OutWithIt(h.shell.Execute(
+		`Disconnect-VMNetworkAdapter -VMName`,
+		common.WrapInQuotes(h.vmName),
+	))
+}
+
 func (h *HyperV) RemoveNetworkSwitch() error {
 	return common.OutWithIt(h.shell.Execute(
 		"Remove-VMSwitch",
@@ -69,7 +78,7 @@ func findInterfaceUsedAsInternetGateway(shell *powershell.PowerShell) (string, e
 
 	interfaceName := out.OutString()
 	if interfaceName == "" {
-		return "", errors.New("could not find gatewayed ethernet adapter")
+		return "", errors.New("could not find gateway ethernet adapter")
 	}
 
 	return "", nil

@@ -7,25 +7,25 @@ import (
 type HyperV struct {
 	shell          *powershell.PowerShell
 	vmName         string
-	vmPath         string
+	workDir        string
 	vmSnapshotPath string
 	exportPath     string
 }
 
 func New(
-	vmName, vmPath, exportPath string,
+	vmName, workDir, exportPath string,
 	powershell *powershell.PowerShell,
 ) *HyperV {
 	return &HyperV{
 		shell:      powershell,
 		vmName:     vmName,
-		vmPath:     vmPath,
+		workDir:    workDir,
 		exportPath: exportPath,
 	}
 }
 
 func (h *HyperV) fullPath(and ...string) string {
-	fp := h.vmPath + `\` + h.vmName
+	fp := h.workDir + `\` + h.vmName
 
 	for _, a := range and {
 		fp += `\` + a

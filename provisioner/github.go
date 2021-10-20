@@ -31,6 +31,28 @@ func gitReleases(owner, repo string, pageSize uint) ([]ReleaseResponse, error) {
 	return releases, nil
 }
 
+func gitRelease(owner, repo, nodeVersion string) (*ReleaseResponse, error) {
+	s := sling.New().
+		Base("https://api.github.com").
+		Set("Accept", "application/vnd.github.v3+json")
+
+	sl := s.Get(fmt.Sprintf("/repos/%s/%s/releases/tags/%s", owner, repo, nodeVersion))
+
+	var release ReleaseResponse
+	resp, err := sl.Receive(&release, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode > 299 || resp.StatusCode < 200 {
+		return nil, fmt.Errorf("status code %d, %v", resp.StatusCode, errNotSuccess)
+	}
+
+	return &release, nil
+}
+
 type ReleaseResponse struct {
 	Url       string `json:"url"`
 	AssetsUrl string `json:"assets_url"`

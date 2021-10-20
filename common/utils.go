@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mysteriumnetwork/hyperv-node/powershell"
 	"os"
@@ -27,33 +28,45 @@ func Path(base string, and ...string) string {
 	return base
 }
 
-func OSDirs() (Dirs, error) {
-	homePath, err := os.UserHomeDir()
-	if err != nil {
-		return Dirs{}, err
+func WorkingDirs(wd string) (Dirs, error) {
+	var workDir string
+
+	if wd == "" {
+		workDir = fmt.Sprintf(`%s\%s`, os.TempDir(), "mysterium")
+	} else {
+		workDir = wd
 	}
 
-	MystTempDir := fmt.Sprintf(`%s\%s`, os.TempDir(), "myst")
-	err = os.MkdirAll(MystTempDir, os.ModePerm)
+	err := os.MkdirAll(workDir, os.ModePerm)
 	if err != nil {
 		return Dirs{}, err
 	}
 
 	hyperVExportDirName := "dist"
-	exportDir := fmt.Sprintf(`%s\%s`, MystTempDir, hyperVExportDirName)
+	exportDir := fmt.Sprintf(`%s\%s`, workDir, hyperVExportDirName)
 	err = os.MkdirAll(exportDir, os.ModePerm)
 	if err != nil {
 		return Dirs{}, err
 	}
 
 	return Dirs{
-		Home:         homePath,
-		Temp:         MystTempDir,
+		WorkDir:      workDir,
 		VMExport:     exportDir,
 		VMExportName: hyperVExportDirName,
 	}, nil
 }
 
 type Dirs struct {
-	Home, Temp, VMExport, VMExportName string
+	Home, WorkDir, VMExport, VMExportName string
+}
+
+func Exists(name string) (bool, error) {
+	_, err := os.Stat(name)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, err
 }
