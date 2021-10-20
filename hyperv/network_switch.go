@@ -76,10 +76,10 @@ func findInterfaceUsedAsInternetGateway(shell *powershell.PowerShell) (string, e
 		return "", err
 	}
 
-	interfaceName := out.OutString()
+	interfaceName := out.OutTrimNewLineString()
 	if interfaceName == "" {
 		return "", errors.New("could not find gateway ethernet adapter")
 	}
 
-	return "", nil
+	return interfaceName, nil
 }
