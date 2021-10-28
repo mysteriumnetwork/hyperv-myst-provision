@@ -39,6 +39,22 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return err
 	}
 
+	// check if the switch exists
+	qParams := []wmi.Query{
+		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
+	}
+	swColl, err := w.Gwmi("Msvm_VirtualEthernetSwitch", []string{}, qParams)
+	if err != nil {
+		return errors.Wrap(err, "Gwmi")
+	}
+	count, err := swColl.Count()
+	if err != nil {
+		return errors.Wrap(err, "Count")
+	}
+	if count > 0 {
+		return nil
+	}	
+
 	data, err := w.Get("Msvm_VirtualEthernetSwitchSettingData")
 	if err != nil {
 		return errors.Wrap(err, "Get")
@@ -55,7 +71,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 	fmt.Println("vesData >", switchText)
 
-	qParams := []wmi.Query{
+	qParams = []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: 2, Type: wmi.Equals}},
 	}
 	eep, err := w.GetOne("Msvm_ExternalEthernetPort", []string{}, qParams)

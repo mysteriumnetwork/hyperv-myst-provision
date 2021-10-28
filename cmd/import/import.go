@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"log"
 	"time"
 
@@ -42,7 +41,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
