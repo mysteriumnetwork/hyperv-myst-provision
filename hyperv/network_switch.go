@@ -2,6 +2,8 @@ package hyperv
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/mysteriumnetwork/hyperv-node/common"
 	"github.com/mysteriumnetwork/hyperv-node/powershell"
 )
@@ -23,7 +25,7 @@ func (h *HyperV) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	exist := !out.IsEmpty()
 
 	if !exist {
-		ifName, err := findInterfaceUsedAsInternetGateway(h.shell)
+		ifName, err := findInterfaceUsedAsIPv4InternetGateway(h.shell)
 		if err != nil {
 			return err
 		}
@@ -63,23 +65,40 @@ func (h *HyperV) RemoveNetworkSwitch() error {
 	))
 }
 
-// TODO this is a poor man's solution for this
-func findInterfaceUsedAsInternetGateway(shell *powershell.PowerShell) (string, error) {
+func findInterfaceUsedAsIPv4InternetGateway(shell *powershell.PowerShell) (string, error) {
 	out, err := shell.Execute(
 		"Get-NetAdapter -Physical",
 		`| Where Status -eq "Up"`,
-		"| Sort-Object ifIndex",
-		"| Select -ExpandProperty Name -first 1",
+		"| Select -ExpandProperty Name",
 	)
 
 	if err := common.OutWithIt(out, err); err != nil {
 		return "", err
 	}
 
-	interfaceName := out.OutTrimNewLineString()
-	if interfaceName == "" {
+	interfaceNameList := strings.Split(out.OutTrimNewLineString(), "\r\n")
+	if len(interfaceNameList) < 1 {
 		return "", errors.New("could not find gateway ethernet adapter")
 	}
 
-	return interfaceName, nil
+	whereQuery := `$_.InterfaceAlias -eq "` + interfaceNameList[0] + `"`
+	for i := 1; i < len(interfaceNameList); i++ {
+		whereQuery += ` -or $_.InterfaceAlias -eq "` + interfaceNameList[i] + `"`
+	}
+
+	out, err = shell.Execute(
+		" Get-NetIpInterface",
+		"| Where {"+whereQuery+"}",
+		`| Where AddressFamily -eq "IPv4"`,
+		"| Sort-Object InterfaceMetric",
+		"| Select -ExpandProperty InterfaceAlias -first 1",
+	)
+
+	if err := common.OutWithIt(out, err); err != nil {
+		return "", err
+	}
+
+	usedInterface := out.OutTrimNewLineString()
+
+	return usedInterface, nil
 }
