@@ -34,16 +34,12 @@ func NewVMSwitchManager() (*Manager, error) {
 }
 
 func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
-	w, err := wmi.NewConnection(".", `root\virtualization\v2`)
-	if err != nil {
-		return err
-	}
 
 	// check if the switch exists
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
-	swColl, err := w.Gwmi("Msvm_VirtualEthernetSwitch", []string{}, qParams)
+	swColl, err := w.Gwmi(VMSwitchClass, []string{}, qParams)
 	if err != nil {
 		return errors.Wrap(err, "Gwmi")
 	}
@@ -55,7 +51,8 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return nil
 	}	
 
-	data, err := w.Get("Msvm_VirtualEthernetSwitchSettingData")
+	// create switch settings in xml representation
+	data, err := w.Get(VMSwitchSettings)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
@@ -69,12 +66,12 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
-	fmt.Println("vesData >", switchText)
 
+	// find external ethernet port and get its device path
 	qParams = []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: 2, Type: wmi.Equals}},
 	}
-	eep, err := w.GetOne("Msvm_ExternalEthernetPort", []string{}, qParams)
+	eep, err := w.GetOne(ExternalPort, []string{}, qParams)
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -83,7 +80,8 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return errors.Wrap(err, "Path")
 	}
 
-	data, err = w.Get("Msvm_EthernetPortAllocationSettingData")
+	// get xml prepresentation of external ethernet port
+	data, err = w.Get(PortAllocSetData)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
@@ -97,15 +95,16 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
-	fmt.Println("extPortDataStr", extPortDataStr)
-
+	
+	// create switch
 	jobPath := ole.VARIANT{}
 	resultingSystem := ole.VARIANT{}
 	jobState, err := m.svc.Get("DefineSystem", switchText, []string{extPortDataStr}, nil, &resultingSystem, &jobPath)
-	fmt.Println("result", jobState, jobPath.Value(), resultingSystem.Value(), err)
 	if err != nil {
 		return errors.Wrap(err, "DefineSystem")
 	}
+
+	// wait for completion
 	if jobState.Value().(int32) == wmi.JobStatusStarted {
 		fmt.Println("started")
 		err := wmi.WaitForJob(jobPath.Value().(string))
