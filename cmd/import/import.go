@@ -45,17 +45,15 @@ func main() {
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
 
-	/////////////////////
-	if flags.Force {
-		hyperV.StopVM()
-		hyperV.RemoveVM()
-	}
-	err = hyperV.ImportVM()
-	if err != nil {
-		log.Fatal(err)
-	}
+	/*	if flags.Force {
+			hyperV.StopVM()
+			hyperV.RemoveVM()
+		}
 
-	//////////////////////
+		err := hyperV.ImportVM()
+		if err != nil {
+			log.Fatal(err)
+		}*/
 
 	err = m.CreateExternalNetworkSwitchIfNotExistsAndAssign()
 	if err != nil {
