@@ -4,3 +4,7 @@ command="myst-wrapper.sh"
 command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+        need net
+}
