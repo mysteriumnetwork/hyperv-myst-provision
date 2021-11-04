@@ -39,7 +39,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
-	swColl, err := w.Gwmi(VMSwitchClass, []string{}, qParams)
+	swColl, err := m.con.Gwmi(VMSwitchClass, []string{}, qParams)
 	if err != nil {
 		return errors.Wrap(err, "Gwmi")
 	}
@@ -49,10 +49,10 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 	if count > 0 {
 		return nil
-	}	
+	}
 
 	// create switch settings in xml representation
-	data, err := w.Get(VMSwitchSettings)
+	data, err := m.con.Get(VMSwitchSettings)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
@@ -71,7 +71,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	qParams = []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: 2, Type: wmi.Equals}},
 	}
-	eep, err := w.GetOne(ExternalPort, []string{}, qParams)
+	eep, err := m.con.GetOne(ExternalPort, []string{}, qParams)
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -81,7 +81,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 
 	// get xml prepresentation of external ethernet port
-	data, err = w.Get(PortAllocSetData)
+	data, err = m.con.Get(PortAllocSetData)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
@@ -95,7 +95,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
-	
+
 	// create switch
 	jobPath := ole.VARIANT{}
 	resultingSystem := ole.VARIANT{}
