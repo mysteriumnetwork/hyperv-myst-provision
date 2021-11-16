@@ -3,12 +3,17 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/itzg/go-flagsfiller"
 	"github.com/mysteriumnetwork/hyperv-node/common"
 	"github.com/mysteriumnetwork/hyperv-node/hyperv"
 	"github.com/mysteriumnetwork/hyperv-node/powershell"
-	"log"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"time"
+
+	"log"
 )
 
 type flagsSet struct {
@@ -66,7 +71,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	/*var keystorePath string
+	var keystorePath string
 	if flags.KeystoreDir != "" {
 		keystorePath = flags.KeystoreDir
 	} else {
@@ -81,13 +86,12 @@ func main() {
 			return nil
 		}
 
-		hyperV.CopyVMFile(path, "/root/.mysterium/keystore")
+		hyperV.CopyVMFile(path, "/root/.mysterium/keystore/")
 		return nil
 	})
 	if err != nil {
 		log.Fatal(err)
-	}*/
-
+	}
 }
 
 func flagsParse() {
