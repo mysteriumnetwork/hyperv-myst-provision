@@ -1,0 +1,90 @@
+#!/usr/bin/expect -f
+
+# Wait enough (forever) until a long-time boot
+set timeout -1
+
+proc put {infile} {
+     send "stty -echo\r"
+     expect "*#"
+
+     send "cat > /tmp/1.sh\n"
+     set f $infile
+     set fp [open $f r]
+     while {1} {
+          if {-1 == [gets $fp buf]} break
+          send_user "."
+          send "$buf\n"
+     }
+     send "\004"
+     expect "*#"
+     send "stty echo\n"
+     expect "*#"
+}
+
+proc poweroff {} {
+     send_user "\nReboot...\n\n"
+     send "poweroff\n"
+     sleep 3
+     close
+     sleep 1
+}
+
+set ROOT_PASSWORD "root-password"
+set disk "alpine-vm-disk.qcow2"
+
+
+# create empty disk
+spawn qemu-img create -f qcow2 alpine-vm-disk.qcow2 1G
+
+# # -nographic \
+
+# Start the guest VM
+spawn qemu-system-x86_64 \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -cdrom alpine-virt-3.14.3-x86_64.iso \
+     -enable-kvm -m 512 \
+     -nic user\
+     -boot d \
+     -hda $disk
+
+expect "login: "
+send "root\n"
+expect "localhost:~#"
+
+put "setup-stage-1.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+
+send_user "\nRun setup...n"
+send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+expect "*#"
+poweroff
+
+send_user "\nSTAGE 2\n"
+spawn qemu-system-x86_64 \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -enable-kvm -m 512 \
+     -nic user\
+     -boot c \
+     -hda $disk
+
+expect "login: "
+send "root\n"
+expect "Password: "
+send "$ROOT_PASSWORD\n"
+expect "*#"
+
+put "setup-stage-2.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+
+send_user "\nRun setup...n"
+send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+expect "*#"
+poweroff
+
+# convert
+spawn qemu-img convert $disk -O vhdx -o subformat=dynamic ${disk}.vhdx
+expect eof
