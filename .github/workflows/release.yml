@@ -13,12 +13,12 @@ jobs:
     - name: Install QEMU
       run: |
         sudo apt-get update -q -y
-        sudo apt-get -qq install -y qemu expect
+        sudo apt-get -qq install -y qemu-system-x86 qemu-utils ovmf expect
 
     - name: Build image
       run: |
         cd assets/alpine
-        wget https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-virt-3.14.3-x86_64.iso
+        wget -q https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-virt-3.14.3-x86_64.iso
         expect provision-image-qemu.exp
 
     - name: Upload
