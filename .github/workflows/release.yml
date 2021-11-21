@@ -1,0 +1,32 @@
+name: release
+
+on:
+  push:
+    tags: ["*"]
+
+jobs:
+  release-amd64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install QEMU
+      run: |
+        sudo apt-get update -q -y
+        sudo apt-get -qq install -y qemu expect
+
+    - name: Build image
+      run: |
+        cd assets/alpine
+        wget https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-virt-3.14.3-x86_64.iso
+        expect provision-image-qemu.exp
+
+    - name: Upload
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          alpine-vm-disk.qcow2.vhdx
+
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
