@@ -12,8 +12,9 @@ jobs:
 
     - name: Install QEMU
       run: |
+        kvm-ok
         sudo apt-get update -q -y
-        sudo apt-get -qq install -y qemu-system-x86 qemu-utils ovmf expect
+        sudo apt-get -qq install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils qemu-system-x86 qemu-utils ovmf expect
 
     - name: Build image
       run: |
