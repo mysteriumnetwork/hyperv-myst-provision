@@ -20,7 +20,7 @@ jobs:
         cd assets/alpine
         wget -q https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-virt-3.14.3-x86_64.iso
         expect provision-image-qemu.exp
-        zip -q -9 alpine-vm-disk.zip alpine-vm-disk.qcow2.vhdx
+        zip -q -9 alpine-vm-disk.zip alpine-vm-disk.vhdx
 
     - name: Upload
       uses: softprops/action-gh-release@v1

@@ -30,13 +30,13 @@ proc poweroff {} {
 }
 
 set ROOT_PASSWORD "root-password"
-set disk "alpine-vm-disk.qcow2"
+set disk "alpine-vm-disk"
 
 
 # create empty disk
-spawn qemu-img create -f qcow2 alpine-vm-disk.qcow2 1G
+spawn qemu-img create -f qcow2 ${disk}.qcow2 1G
 
-# # -enable-kvm
+# -enable-kvm
 
 # Start the guest VM
 spawn qemu-system-x86_64 \
@@ -47,7 +47,7 @@ spawn qemu-system-x86_64 \
      -m 512 \
      -nic user\
      -boot d \
-     -hda $disk
+     -hda ${disk}.qcow2
 
 expect "login: "
 send "root\n"
@@ -71,7 +71,7 @@ spawn qemu-system-x86_64 \
      -m 512 \
      -nic user\
      -boot c \
-     -hda $disk
+     -hda ${disk}.qcow2
 
 expect "login: "
 send "root\n"
@@ -89,5 +89,5 @@ expect "*#"
 poweroff
 
 # convert
-spawn qemu-img convert $disk -O vhdx -o subformat=dynamic ${disk}.vhdx
+spawn qemu-img convert ${disk}.qcow2 -O vhdx -o subformat=dynamic ${disk}.vhdx
 expect eof
