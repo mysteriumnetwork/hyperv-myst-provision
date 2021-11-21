@@ -12,10 +12,10 @@ jobs:
 
     - name: Install QEMU
       run: |
-        egrep -c '(vmx|svm)' /proc/cpuinfo
+        #egrep -c '(vmx|svm)' /proc/cpuinfo
         sudo apt-get update -q -y
         sudo apt-get -qq install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils qemu-system-x86 qemu-utils ovmf expect cpu-checker
-        kvm-ok
+        #kvm-ok
 
     - name: Build image
       run: |

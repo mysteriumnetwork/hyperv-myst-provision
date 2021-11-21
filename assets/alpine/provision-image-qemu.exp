@@ -36,14 +36,15 @@ set disk "alpine-vm-disk.qcow2"
 # create empty disk
 spawn qemu-img create -f qcow2 alpine-vm-disk.qcow2 1G
 
-# # -nographic \
+# # -enable-kvm
 
 # Start the guest VM
 spawn qemu-system-x86_64 \
+     -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
      -cdrom alpine-virt-3.14.3-x86_64.iso \
-     -enable-kvm -m 512 \
+     -m 512 \
      -nic user\
      -boot d \
      -hda $disk
@@ -64,6 +65,7 @@ poweroff
 #-enable-kvm
 send_user "\nSTAGE 2\n"
 spawn qemu-system-x86_64 \
+     -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
      -m 512 \
