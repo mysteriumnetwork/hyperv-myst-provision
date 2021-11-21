@@ -12,24 +12,21 @@ jobs:
 
     - name: Install QEMU
       run: |
-        #egrep -c '(vmx|svm)' /proc/cpuinfo
         sudo apt-get update -q -y
-        sudo apt-get -qq install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils qemu-system-x86 qemu-utils ovmf expect cpu-checker
-        #kvm-ok
+        sudo apt-get -qq install -y bridge-utils qemu-system-x86 qemu-utils ovmf expect cpu-checker
 
     - name: Build image
       run: |
         cd assets/alpine
         wget -q https://dl-cdn.alpinelinux.org/alpine/v3.14/releases/x86_64/alpine-virt-3.14.3-x86_64.iso
         expect provision-image-qemu.exp
-        ls -g
 
     - name: Upload
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          alpine-vm-disk.qcow2.vhdx
+          assets/alpine/alpine-vm-disk.qcow2.vhdx
 
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
