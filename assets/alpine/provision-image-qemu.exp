@@ -61,11 +61,12 @@ send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
 expect "*#"
 poweroff
 
+#-enable-kvm
 send_user "\nSTAGE 2\n"
 spawn qemu-system-x86_64 \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
-     -enable-kvm -m 512 \
+     -m 512 \
      -nic user\
      -boot c \
      -hda $disk
