@@ -4,3 +4,21 @@ command="myst"
 command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+        need net
+}
+
+start_pre() {
+    while true
+    do
+        l=`find /root/.mysterium/keystore -type f | wc -l`
+        if [ $l -ge 2 ]
+        then
+          logger Keystore found..
+          break
+        fi
+        echo Waiting for keystore..
+        sleep 5
+    done
+}

@@ -3,12 +3,19 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"time"
+	"log"
+
 	"github.com/itzg/go-flagsfiller"
+
 	"github.com/mysteriumnetwork/hyperv-node/common"
 	"github.com/mysteriumnetwork/hyperv-node/hyperv"
+	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
 	"github.com/mysteriumnetwork/hyperv-node/powershell"
-	"log"
-	"time"
 )
 
 type flagsSet struct {
@@ -35,6 +42,11 @@ var flags flagsSet
 func main() {
 	flagsParse()
 
+	m, err := network.NewVMSwitchManager()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
 
@@ -48,7 +60,7 @@ func main() {
 			log.Fatal(err)
 		}*/
 
-	err := hyperV.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	err = m.CreateExternalNetworkSwitchIfNotExistsAndAssign()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +78,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	/*var keystorePath string
+	var keystorePath string
 	if flags.KeystoreDir != "" {
 		keystorePath = flags.KeystoreDir
 	} else {
@@ -81,13 +93,12 @@ func main() {
 			return nil
 		}
 
-		hyperV.CopyVMFile(path, "/root/.mysterium/keystore")
+		hyperV.CopyVMFile(path, "/root/.mysterium/keystore/")
 		return nil
 	})
 	if err != nil {
 		log.Fatal(err)
-	}*/
-
+	}
 }
 
 func flagsParse() {
