@@ -53,7 +53,7 @@ expect "login: "
 send "root\n"
 expect "localhost:~#"
 
-put "setup-stage-1.sh"
+put "assets/alpine/setup-stage-1.sh"
 send "chmod +x /tmp/1.sh\n"
 expect "*#"
 
@@ -79,13 +79,23 @@ expect "Password: "
 send "$ROOT_PASSWORD\n"
 expect "*#"
 
-put "setup-stage-2.sh"
+put "assets/alpine/setup-stage-2.sh"
 send "chmod +x /tmp/1.sh\n"
 expect "*#"
-
 send_user "\nRun setup...n"
-send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+send "/tmp/1.sh\n"
 expect "*#"
+
+# get latest release
+set node_version [exec go run cmd/resolve-node-version/resolve.go 2> /dev/null]
+
+put "assets/alpine/install-myst.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nSetup node...n"
+send "/tmp/1.sh $node_version\n"
+expect "*#"
+
 poweroff
 
 # convert
