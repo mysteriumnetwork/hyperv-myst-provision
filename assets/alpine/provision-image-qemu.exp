@@ -87,8 +87,7 @@ send "/tmp/1.sh\n"
 expect "*#"
 
 # get latest release
-#2> /dev/null
-set node_version [exec go run cmd/resolve-node-version/resolve.go]
+set node_version [exec go run cmd/resolve-node-version/resolve.go 2> /dev/null]
 
 put "assets/alpine/install-myst.sh"
 send "chmod +x /tmp/1.sh\n"
