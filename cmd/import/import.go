@@ -4,16 +4,18 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/itzg/go-flagsfiller"
-	"github.com/mysteriumnetwork/hyperv-node/common"
-	"github.com/mysteriumnetwork/hyperv-node/hyperv"
-	"github.com/mysteriumnetwork/hyperv-node/powershell"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
-
 	"log"
+
+	"github.com/itzg/go-flagsfiller"
+
+	"github.com/mysteriumnetwork/hyperv-node/common"
+	"github.com/mysteriumnetwork/hyperv-node/hyperv"
+	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
+	"github.com/mysteriumnetwork/hyperv-node/powershell"
 )
 
 type flagsSet struct {
@@ -40,6 +42,11 @@ var flags flagsSet
 func main() {
 	flagsParse()
 
+	m, err := network.NewVMSwitchManager()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
 
@@ -53,7 +60,7 @@ func main() {
 			log.Fatal(err)
 		}*/
 
-	err := hyperV.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	err = m.CreateExternalNetworkSwitchIfNotExistsAndAssign()
 	if err != nil {
 		log.Fatal(err)
 	}
