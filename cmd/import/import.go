@@ -5,10 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
-	"log"
 
 	"github.com/itzg/go-flagsfiller"
 
@@ -19,7 +19,7 @@ import (
 )
 
 type flagsSet struct {
-	VMName               string `default:"Myst HyperV Alpine" usage:"hyper-v guest VM name"`
+	VMName               string `default:"Myst HyperV Alpine_" usage:"hyper-v guest VM name"`
 	WorkDir              string `usage:"path to hyperv VM folder"`
 	KeystoreDir          string `usage:"path to keystore folder (C:\Users\<user>\.mysterium\keystore"`
 	Force                bool   `default:"false" usage:"will remove any existing VM with same name"`
@@ -42,10 +42,32 @@ var flags flagsSet
 func main() {
 	flagsParse()
 
-	m, err := network.NewVMSwitchManager()
+	mgr, err := network.NewVMManager()
 	if err != nil {
 		log.Fatal(err)
 	}
+	vm, err := mgr.GetVMByName(flags.VMName)
+	fmt.Println("GetVMByName", vm, err)
+	if vm == nil {
+		// create
+		err := mgr.CreateVM(flags.VMName)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		//r, _ := mgr.GetVMByName(flags.VMName)
+		//fmt.Println(r.Path())
+		//
+		//cs, err := r.Get("associators_", nil, network.ResourceAllocationSettingData)
+		//if err != nil {
+		//	return
+		//}
+		//fmt.Println(cs.Elements())
+
+		return
+	}
+	mgr.StartVM(flags.VMName)
+	return
 
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
@@ -60,7 +82,7 @@ func main() {
 			log.Fatal(err)
 		}*/
 
-	err = m.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,5 +131,4 @@ func flagsParse() {
 	if err := flags.validate(); err != nil {
 		log.Fatal(err)
 	}
-
 }
