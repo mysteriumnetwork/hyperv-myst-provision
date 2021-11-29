@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	scsi     = "Microsoft:Hyper-V:Synthetic SCSI Controller"
+	scsiType = "Microsoft:Hyper-V:Synthetic SCSI Controller"
 	diskType = "Microsoft:Hyper-V:Synthetic Disk Drive"
-	//diskType = "Microsoft:Hyper-V:Virtual Hard Disk"
+	vhdType  = "Microsoft:Hyper-V:Virtual Hard Disk"
 )
 
 func (m *Manager) getDefaultClassValue(resourceSubType string) (*wmi.Result, error) {
@@ -20,9 +20,10 @@ func (m *Manager) getDefaultClassValue(resourceSubType string) (*wmi.Result, err
 	}
 
 	class := ResourceAllocationSettingData
-	//if resourceSubType == diskType {
-	//	class = StorageAllocSettingDataClass
-	//}
+	if resourceSubType == vhdType {
+		class = StorageAllocSettingDataClass
+	}
+
 	swColl, err := m.con.Gwmi(class, []string{}, qParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "Gwmi")

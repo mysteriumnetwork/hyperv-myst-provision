@@ -50,7 +50,8 @@ func main() {
 	fmt.Println("GetVMByName", vm, err)
 	if vm == nil {
 		// create
-		err := mgr.CreateVM(flags.VMName)
+		vhdFilePath := `C:\Users\user\src\work_dir\alpine-vm-disk\alpine-vm-disk.vhdx`
+		err := mgr.CreateVM(flags.VMName, vhdFilePath)
 		if err != nil {
 			fmt.Println(err)
 		}

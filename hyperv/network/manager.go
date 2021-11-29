@@ -67,14 +67,13 @@ func (m *Manager) GetVMByName(vmName string) (*wmi.Result, error) {
 	return nil, nil
 }
 
-func (m *Manager) CreateVM(vmName string) error {
+func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 
 	// create switch settings in xml representation
 	data, err := m.con.Get(VMSystemSettingData)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
-
 	systemInstance, err := data.Get("SpawnInstance_")
 	if err != nil {
 		return errors.Wrap(err, "SpawnInstance_")
@@ -82,6 +81,7 @@ func (m *Manager) CreateVM(vmName string) error {
 	systemInstance.Set("ElementName", vmName)
 	systemInstance.Set("Notes", []string{"VM for mysterium node"})
 	systemInstance.Set("VirtualSystemSubType", "Microsoft:Hyper-V:SubType:2")
+	systemInstance.Set("SecureBootEnabled", false)
 	systemText, err := systemInstance.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
@@ -103,22 +103,7 @@ func (m *Manager) CreateVM(vmName string) error {
 		return errors.Wrap(err, "GetText")
 	}
 
-	//data, err = m.con.Get(MsvmVirtualHardDiskSettingData)
-	//if err != nil {
-	//	return errors.Wrap(err, "Get")
-	//}
-	//vhdData, err := data.Get("SpawnInstance_")
-	//if err != nil {
-	//	return errors.Wrap(err, "SpawnInstance_")
-	//}
-	//vhdData.Set("BlockSize", 0)
-	//vhdDataStr, err := vhdData.GetText(1)
-	//if err != nil {
-	//	return errors.Wrap(err, "GetText")
-	//}
-	//fmt.Println(vhdDataStr)
-
-	el, err := m.getDefaultClassValue(scsi)
+	el, err := m.getDefaultClassValue(scsiType)
 	if err != nil {
 		return err
 	}
@@ -146,9 +131,9 @@ func (m *Manager) CreateVM(vmName string) error {
 		return err
 	}
 
-	locationURI := resultingSystem.Value().(string)
-	fmt.Println(locationURI)
-	loc, err := wmi.NewLocation(locationURI)
+	vmLocationURI := resultingSystem.Value().(string)
+	fmt.Println(vmLocationURI)
+	loc, err := wmi.NewLocation(vmLocationURI)
 	if err != nil {
 		return errors.Wrap(err, "getting location")
 	}
@@ -162,10 +147,10 @@ func (m *Manager) CreateVM(vmName string) error {
 	}
 	fmt.Println(id.Value())
 
-	// add scsiCtrl
+	// add SCSI controller
 	jobPath2 := ole.VARIANT{}
 	resultingSystem2 := ole.VARIANT{}
-	jobState2, err := m.vsMgr.Get("AddResourceSettings", locationURI, []string{scsiCtrlStr}, &resultingSystem2, &jobPath)
+	jobState2, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{scsiCtrlStr}, &resultingSystem2, &jobPath)
 	if err != nil {
 		return errors.Wrap(err, "AddResourceSettings")
 	}
@@ -173,26 +158,26 @@ func (m *Manager) CreateVM(vmName string) error {
 	if err != nil {
 		return err
 	}
-	locationURI2 := resultingSystem2.ToArray().ToValueArray()
-	fmt.Println(locationURI2[0].(string))
+	scsiControllerURI := resultingSystem2.ToArray().ToValueArray()
+	fmt.Println(scsiControllerURI[0].(string))
 
-	// add drive
+	// add disk drive
 	diskRes, err := m.getDefaultClassValue(diskType)
 	if err != nil {
 		return errors.Wrap(err, "getDefaultClassValue")
 	}
 	diskRes.Set("Address", 0)
 	diskRes.Set("AddressOnParent", 0)
-	diskRes.Set("Parent", locationURI2[0].(string))
+	diskRes.Set("Parent", scsiControllerURI[0].(string))
 	diskResStr, err := diskRes.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
-	//fmt.Println(diskResStr)
 
+	// add disk to VM config
 	jobPath3 := ole.VARIANT{}
 	resultingSystem3 := ole.VARIANT{}
-	jobState3, err := m.vsMgr.Get("AddResourceSettings", locationURI, []string{diskResStr}, &resultingSystem3, &jobPath3)
+	jobState3, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{diskResStr}, &resultingSystem3, &jobPath3)
 	if err != nil {
 		return errors.Wrap(err, "AddResourceSettings")
 	}
@@ -200,24 +185,37 @@ func (m *Manager) CreateVM(vmName string) error {
 	if err != nil {
 		return err
 	}
-	//locationURI3 := resultingSystem3.ToArray().ToValueArray()
-	//fmt.Println(locationURI3)
+	diskLocationURI := resultingSystem3.ToArray().ToValueArray()
+	fmt.Println(diskLocationURI[0].(string))
 
-	//if err := storageRes.Set("Parent", drivePath); err != nil {
-	//	return errors.Wrap(err, "Parent")
-	//}
-	//if err := storageRes.Set("HostResource", []string{path}); err != nil {
-	//	return errors.Wrap(err, "HostResource")
-	//}
+	// add vhdx disk
+	vhdRes, err := m.getDefaultClassValue(vhdType)
+	if err != nil {
+		return errors.Wrap(err, "getDefaultClassValue")
+	}
+	if err := vhdRes.Set("Parent", diskLocationURI[0].(string)); err != nil {
+		return errors.Wrap(err, "Parent")
+	}
+	if err := vhdRes.Set("HostResource", []string{vhdFilePath}); err != nil {
+		return errors.Wrap(err, "HostResource")
+	}
+	vhdResStr, err := vhdRes.GetText(1)
+	if err != nil {
+		return errors.Wrap(err, "GetText")
+	}
 
-	//r, err := result.Get("associators_", nil, ResourceAllocationSettingData)
-	//fmt.Println("r>", r, err)
-	//fmt.Println(r.Count())
-	//r_, err := r.ItemAtIndex(0)
-	//fmt.Println("r>", r_, err)
-	//fmt.Println(resultingSystem.ToIDispatch().GetProperty("InstanceID"))
-	//fmt.Println(resultingSystem.ToIDispatch().GetProperty("Name"))
-	return err
+	// add disk to VM config
+	jobPath4 := ole.VARIANT{}
+	resultingSystem4 := ole.VARIANT{}
+	jobState4, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{vhdResStr}, &resultingSystem4, &jobPath4)
+	if err != nil {
+		return errors.Wrap(err, "AddResourceSettings")
+	}
+	if err := m.waitForJob(jobState4, jobPath4); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *Manager) StartVM(vmName string) error {
