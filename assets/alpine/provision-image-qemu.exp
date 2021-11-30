@@ -1,0 +1,103 @@
+#!/usr/bin/expect -f
+
+# Wait enough (forever) until a long-time boot
+set timeout -1
+
+proc put {infile} {
+     send "stty -echo\r"
+     expect "*#"
+
+     send "cat > /tmp/1.sh\n"
+     set f $infile
+     set fp [open $f r]
+     while {1} {
+          if {-1 == [gets $fp buf]} break
+          send_user "."
+          send "$buf\n"
+     }
+     send "\004"
+     expect "*#"
+     send "stty echo\n"
+     expect "*#"
+}
+
+proc poweroff {} {
+     send_user "\nReboot...\n\n"
+     send "poweroff\n"
+     sleep 3
+     close
+     sleep 1
+}
+
+set ROOT_PASSWORD "root-password"
+set disk "alpine-vm-disk"
+
+
+# create empty disk
+spawn qemu-img create -f qcow2 ${disk}.qcow2 1G
+
+# -enable-kvm
+
+# Start the guest VM
+spawn qemu-system-x86_64 \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -cdrom alpine-virt-3.14.3-x86_64.iso \
+     -m 512 \
+     -nic user\
+     -boot d \
+     -hda ${disk}.qcow2
+
+expect "login: "
+send "root\n"
+expect "localhost:~#"
+
+put "assets/alpine/setup-stage-1.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+
+send_user "\nRun setup...n"
+send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+expect "*#"
+poweroff
+
+#-enable-kvm
+send_user "\nSTAGE 2\n"
+spawn qemu-system-x86_64 \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -m 512 \
+     -nic user\
+     -boot c \
+     -hda ${disk}.qcow2
+
+expect "login: "
+send "root\n"
+expect "Password: "
+send "$ROOT_PASSWORD\n"
+expect "*#"
+
+put "assets/alpine/setup-stage-2.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nRun setup...n"
+send "/tmp/1.sh\n"
+expect "*#"
+
+# get latest release
+set node_version [exec go run cmd/resolve-node-version/resolve.go 2> /dev/null]
+
+put "assets/alpine/install-myst.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nSetup node...n"
+send "/tmp/1.sh $node_version\n"
+expect "*#"
+
+poweroff
+
+# convert
+spawn qemu-img convert ${disk}.qcow2 -O vhdx -o subformat=dynamic ${disk}.vhdx
+expect eof

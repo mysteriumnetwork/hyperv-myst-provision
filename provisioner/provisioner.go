@@ -13,6 +13,10 @@ type Provisioner struct {
 	NodeVersion string
 }
 
+func GetLatestNodeVersion(nodeVersion string) (string, error) {
+	return latestNodeVersionOrProvided(nodeVersion)
+}
+
 func NewProvisioner(shell *powershell.PowerShell, nodeVersion string) (*Provisioner, error) {
 	resolvedNodeVersion, err := latestNodeVersionOrProvided(nodeVersion)
 	if err != nil {

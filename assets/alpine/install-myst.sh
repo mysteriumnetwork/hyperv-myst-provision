@@ -20,6 +20,6 @@ cp myst /bin/
 wget https://raw.githubusercontent.com/mysteriumnetwork/hyperv-myst-provision/master/assets/alpine/myst-service
 mv myst-service /etc/init.d/
 chmod +x /etc/init.d/myst-service
-rc-update add myst-service default
+#rc-update add myst-service default
 cd ..
 rm -rf node
