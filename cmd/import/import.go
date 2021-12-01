@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/gabriel-samfira/go-wmi/wmi"
 	"io/fs"
 	"log"
 	"os"
@@ -46,9 +47,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	//err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
 	vm, err := mgr.GetVMByName(flags.VMName)
-	fmt.Println("GetVMByName", vm, err)
-	if vm == nil {
+	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+		fmt.Println("111")
+		log.Fatal(err)
+	}
+
+	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
 		// create
 		vhdFilePath := `C:\Users\user\src\work_dir\alpine-vm-disk\alpine-vm-disk.vhdx`
 		err := mgr.CreateVM(flags.VMName, vhdFilePath)
@@ -56,19 +67,10 @@ func main() {
 			fmt.Println(err)
 		}
 
-		//r, _ := mgr.GetVMByName(flags.VMName)
-		//fmt.Println(r.Path())
-		//
-		//cs, err := r.Get("associators_", nil, network.ResourceAllocationSettingData)
-		//if err != nil {
-		//	return
-		//}
-		//fmt.Println(cs.Elements())
-
 		return
 	}
-	mgr.StartVM(flags.VMName)
-	return
+	//mgr.StartVM(flags.VMName)
+	//return
 
 	shell := powershell.New(powershell.OptionDebugPrint)
 	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
@@ -81,7 +83,8 @@ func main() {
 		err := hyperV.ImportVM()
 		if err != nil {
 			log.Fatal(err)
-		}*/
+		}
+	*/
 
 	err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
 	if err != nil {

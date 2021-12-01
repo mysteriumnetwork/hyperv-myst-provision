@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"github.com/gabriel-samfira/go-wmi/utils"
+	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
@@ -46,25 +47,11 @@ func NewVMManager() (*Manager, error) {
 	return sw, nil
 }
 
-// check if VM exists
 func (m *Manager) GetVMByName(vmName string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
 	}
-	swColl, err := m.con.Gwmi(ComputerSystem, []string{}, qParams)
-	if err != nil {
-		return nil, errors.Wrap(err, "Gwmi")
-	}
-	count, err := swColl.Count()
-	if err != nil {
-		return nil, errors.Wrap(err, "Count")
-	}
-
-	if count > 0 {
-		el, _ := swColl.Elements()
-		return el[0], nil
-	}
-	return nil, nil
+	return m.con.GetOne(ComputerSystem, []string{}, qParams)
 }
 
 func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
@@ -82,12 +69,14 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	systemInstance.Set("Notes", []string{"VM for mysterium node"})
 	systemInstance.Set("VirtualSystemSubType", "Microsoft:Hyper-V:SubType:2")
 	systemInstance.Set("SecureBootEnabled", false)
+	systemInstance.Set("UserSnapshotType", 2)
+
 	systemText, err := systemInstance.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
 
-	// resources
+	// memory
 	data, err = m.con.Get(MsvmMemorySettingData)
 	if err != nil {
 		return errors.Wrap(err, "Get")
@@ -103,36 +92,22 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 		return errors.Wrap(err, "GetText")
 	}
 
-	el, err := m.getDefaultClassValue(scsiType)
-	if err != nil {
-		return err
-	}
-	newID, err := utils.UUID4()
-	if err != nil {
-		return errors.Wrap(err, "UUID4")
-	}
-	if el.Set("VirtualSystemIdentifiers", []string{fmt.Sprintf("{%s}", newID)}); err != nil {
-		return errors.Wrap(err, "VirtualSystemIdentifiers")
-	}
-	scsiCtrlStr, err := el.GetText(1)
-	if err != nil {
-		return errors.Wrap(err, "GetText")
-	}
-
 	// create vm
-	jobPath := ole.VARIANT{}
-	resultingSystem := ole.VARIANT{}
-	jobState, err := m.vsMgr.Get("DefineSystem", systemText, []string{sysMemoryDataStr}, nil, &resultingSystem, &jobPath)
+	jobPath1 := ole.VARIANT{}
+	resultingSystem1 := ole.VARIANT{}
+	jobState1, err := m.vsMgr.Get("DefineSystem", systemText, []string{sysMemoryDataStr}, nil, &resultingSystem1, &jobPath1)
 	if err != nil {
 		return errors.Wrap(err, "DefineSystem")
 	}
-	err = m.waitForJob(jobState, jobPath)
+	err = m.waitForJob(jobState1, jobPath1)
 	if err != nil {
 		return err
 	}
 
-	vmLocationURI := resultingSystem.Value().(string)
-	fmt.Println(vmLocationURI)
+	//vmLocationURI := resultingSystem1.Value().(string)
+	vmLocationURI := getPathFromResultingSystem(resultingSystem1)
+	fmt.Println("vmLocationURI:", vmLocationURI)
+
 	loc, err := wmi.NewLocation(vmLocationURI)
 	if err != nil {
 		return errors.Wrap(err, "getting location")
@@ -145,12 +120,28 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	if err != nil {
 		return errors.Wrap(err, "fetching VM ID")
 	}
-	fmt.Println(id.Value())
+	fmt.Println("vm id", id.Value())
 
 	// add SCSI controller
+	scsiControllerRes, err := m.getDefaultClassValue(ResourceAllocationSettingData, scsiType)
+	if err != nil {
+		return err
+	}
+	newID, err := utils.UUID4()
+	if err != nil {
+		return errors.Wrap(err, "UUID4")
+	}
+	if scsiControllerRes.Set("VirtualSystemIdentifiers", []string{fmt.Sprintf("{%s}", newID)}); err != nil {
+		return errors.Wrap(err, "VirtualSystemIdentifiers")
+	}
+	scsiCtrlStr, err := scsiControllerRes.GetText(1)
+	if err != nil {
+		return errors.Wrap(err, "GetText")
+	}
+
 	jobPath2 := ole.VARIANT{}
 	resultingSystem2 := ole.VARIANT{}
-	jobState2, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{scsiCtrlStr}, &resultingSystem2, &jobPath)
+	jobState2, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{scsiCtrlStr}, &resultingSystem2, &jobPath2)
 	if err != nil {
 		return errors.Wrap(err, "AddResourceSettings")
 	}
@@ -158,17 +149,17 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	if err != nil {
 		return err
 	}
-	scsiControllerURI := resultingSystem2.ToArray().ToValueArray()
-	fmt.Println(scsiControllerURI[0].(string))
+	scsiControllerURI := getPathFromResultingResourceSettings(resultingSystem2)
+	fmt.Println("scsiControllerURI:", scsiControllerURI)
 
 	// add disk drive
-	diskRes, err := m.getDefaultClassValue(diskType)
+	diskRes, err := m.getDefaultClassValue(ResourceAllocationSettingData, diskType)
 	if err != nil {
 		return errors.Wrap(err, "getDefaultClassValue")
 	}
 	diskRes.Set("Address", 0)
 	diskRes.Set("AddressOnParent", 0)
-	diskRes.Set("Parent", scsiControllerURI[0].(string))
+	diskRes.Set("Parent", scsiControllerURI)
 	diskResStr, err := diskRes.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
@@ -185,15 +176,15 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	if err != nil {
 		return err
 	}
-	diskLocationURI := resultingSystem3.ToArray().ToValueArray()
-	fmt.Println(diskLocationURI[0].(string))
+	diskLocationURI := getPathFromResultingResourceSettings(resultingSystem3)
+	fmt.Println("diskLocationURI:", diskLocationURI)
 
 	// add vhdx disk
-	vhdRes, err := m.getDefaultClassValue(vhdType)
+	vhdRes, err := m.getDefaultClassValue(StorageAllocSettingDataClass, vhdType)
 	if err != nil {
 		return errors.Wrap(err, "getDefaultClassValue")
 	}
-	if err := vhdRes.Set("Parent", diskLocationURI[0].(string)); err != nil {
+	if err := vhdRes.Set("Parent", diskLocationURI); err != nil {
 		return errors.Wrap(err, "Parent")
 	}
 	if err := vhdRes.Set("HostResource", []string{vhdFilePath}); err != nil {
@@ -215,6 +206,69 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 		return err
 	}
 
+	// network adapter
+	networkRes, err := m.getDefaultClassValue(vm.SyntheticEthernetPortSettingDataClass, "")
+	if err != nil {
+		return err
+	}
+	newID2, err := utils.UUID4()
+	if err != nil {
+		return errors.Wrap(err, "UUID4")
+	}
+	if networkRes.Set("VirtualSystemIdentifiers", []string{fmt.Sprintf("{%s}", newID2)}); err != nil {
+		return errors.Wrap(err, "VirtualSystemIdentifiers")
+	}
+	if err := networkRes.Set("ElementName", "Myst Network VM Adapter"); err != nil {
+		return errors.Wrap(err, "set ElementName")
+	}
+	networkStr, err := networkRes.GetText(1)
+	if err != nil {
+		return errors.Wrap(err, "GetText")
+	}
+
+	jobPath5 := ole.VARIANT{}
+	resultingSystem5 := ole.VARIANT{}
+	jobState5, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{networkStr}, &resultingSystem5, &jobPath5)
+	if err != nil {
+		return errors.Wrap(err, "AddResourceSettings")
+	}
+	err = m.waitForJob(jobState5, jobPath5)
+	if err != nil {
+		return err
+	}
+	networkURI := getPathFromResultingResourceSettings(resultingSystem5)
+	fmt.Println("networkURI", networkURI)
+
+	// connect adapter to switch
+	sw, _ := m.GetVirtSwitchByName(switchName)
+	swPath, _ := sw.Path()
+
+	portAllocRes, err := m.getDefaultClassValue("Msvm_EthernetPortAllocationSettingData", "")
+	if err != nil {
+		return err
+	}
+	if err := portAllocRes.Set("Parent", networkURI); err != nil {
+		return errors.Wrap(err, "Set")
+	}
+	if err := portAllocRes.Set("HostResource", []string{swPath}); err != nil {
+		return errors.Wrap(err, "Set")
+	}
+	portAllocStr, err := portAllocRes.GetText(1)
+	if err != nil {
+		return errors.Wrap(err, "GetText")
+	}
+
+	jobPath6 := ole.VARIANT{}
+	resultingSystem6 := ole.VARIANT{}
+	jobState6, err := m.vsMgr.Get("AddResourceSettings", vmLocationURI, []string{portAllocStr}, &resultingSystem6, &jobPath6)
+	if err != nil {
+		return errors.Wrap(err, "AddResourceSettings")
+	}
+	err = m.waitForJob(jobState6, jobPath6)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -222,24 +276,10 @@ func (m *Manager) StartVM(vmName string) error {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
 	}
-	swColl, err := m.con.Gwmi(ComputerSystem, []string{}, qParams)
+	vm, err := m.con.GetOne(ComputerSystem, []string{}, qParams)
 	if err != nil {
-		return errors.Wrap(err, "Gwmi")
+		return errors.Wrap(err, "GetOne")
 	}
-	count, err := swColl.Count()
-	if err != nil {
-		return errors.Wrap(err, "Count")
-	}
-	if count == 0 {
-		return errors.New("VM not found")
-	}
-
-	el, err := swColl.Elements()
-	if err != nil {
-		return errors.Wrap(err, "Elements")
-	}
-	vm := el[0]
-	fmt.Println(vm.Path())
 
 	jobPath := ole.VARIANT{}
 	jobState, err := vm.Get("RequestStateChange", 2, nil, &jobPath)
@@ -255,15 +295,11 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
-	swColl, err := m.con.Gwmi(VMSwitchClass, []string{}, qParams)
-	if err != nil {
-		return errors.Wrap(err, "Gwmi")
+	sw, err := m.con.GetOne(VMSwitchClass, []string{}, qParams)
+	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+		return errors.Wrap(err, "GetOne")
 	}
-	count, err := swColl.Count()
-	if err != nil {
-		return errors.Wrap(err, "Count")
-	}
-	if count > 0 {
+	if err == nil && sw != nil {
 		return nil
 	}
 
@@ -321,4 +357,11 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 
 	return m.waitForJob(jobState, jobPath)
+}
+
+func (m *Manager) GetVirtSwitchByName(switchName string) (*wmi.Result, error) {
+	qParams := []wmi.Query{
+		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
+	}
+	return m.con.GetOne(VMSwitchClass, []string{}, qParams)
 }

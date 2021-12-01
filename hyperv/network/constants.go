@@ -16,7 +16,6 @@ const (
 	VMSystemManagementService = "Msvm_VirtualSystemManagementService"
 	VMImageManagementService  = "Msvm_ImageManagementService"
 
-	Msvm_ResourceAllocationSettingData
 	WIFIPort                       = "Msvm_WiFiPort"
 	EthernetSwitchPort             = "Msvm_EthernetSwitchPort"
 	PortAllocSetData               = "Msvm_EthernetPortAllocationSettingData"

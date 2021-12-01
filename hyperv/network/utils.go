@@ -13,24 +13,27 @@ const (
 	vhdType  = "Microsoft:Hyper-V:Virtual Hard Disk"
 )
 
-func (m *Manager) getDefaultClassValue(resourceSubType string) (*wmi.Result, error) {
+func getPathFromResultingResourceSettings(r ole.VARIANT) string {
+	URI := r.ToArray().ToValueArray()
+	return URI[0].(string)
+}
+func getPathFromResultingSystem(r ole.VARIANT) string {
+	return r.Value().(string)
+}
+
+func (m *Manager) getDefaultClassValue(class, resourceSubType string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
-		&wmi.AndQuery{wmi.QueryFields{Key: "ResourceSubType", Value: resourceSubType, Type: wmi.Equals}},
 		&wmi.AndQuery{wmi.QueryFields{Key: "InstanceID", Value: "%Default%", Type: wmi.Like}},
 	}
-
-	class := ResourceAllocationSettingData
-	if resourceSubType == vhdType {
-		class = StorageAllocSettingDataClass
+	if resourceSubType != "" {
+		qParams = append(qParams,
+			&wmi.AndQuery{wmi.QueryFields{Key: "ResourceSubType", Value: resourceSubType, Type: wmi.Equals}},
+		)
 	}
 
-	swColl, err := m.con.Gwmi(class, []string{}, qParams)
+	el, err := m.con.GetOne(class, []string{}, qParams)
 	if err != nil {
-		return nil, errors.Wrap(err, "Gwmi")
-	}
-	el, err := swColl.ItemAtIndex(0)
-	if err != nil {
-		return nil, errors.Wrap(err, "ItemAtIndex")
+		return nil, errors.Wrap(err, "GetOne")
 	}
 	return el, nil
 }
