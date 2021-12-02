@@ -48,14 +48,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	//err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	vm, err := mgr.GetVMByName(flags.VMName)
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
-		fmt.Println("111")
 		log.Fatal(err)
 	}
 
@@ -86,10 +85,10 @@ func main() {
 		}
 	*/
 
-	err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	err = hyperV.StartVM()
 	if err != nil {

@@ -1,10 +1,12 @@
 package network
 
 import (
+	"encoding/xml"
 	"fmt"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 const (
@@ -17,10 +19,42 @@ func getPathFromResultingResourceSettings(r ole.VARIANT) string {
 	URI := r.ToArray().ToValueArray()
 	return URI[0].(string)
 }
+
 func getPathFromResultingSystem(r ole.VARIANT) string {
 	return r.Value().(string)
 }
 
+type KVXml struct {
+	Property []struct {
+		Name  string `xml:"NAME,attr"`
+		Value string `xml:"VALUE"`
+	} `xml:"PROPERTY"`
+}
+
+func decodeXMLArray(txt []interface{}) map[string]string {
+	dict := make(map[string]string, 0)
+
+	for _, rec := range txt {
+		r := strings.NewReader(rec.(string))
+		parser := xml.NewDecoder(r)
+		kv := KVXml{}
+		parser.Decode(&kv)
+
+		data := ""
+		for _, v := range kv.Property {
+			if v.Name == "Data" {
+				data = v.Value
+			}
+			if v.Name == "Name" {
+				dict[v.Value] = data
+			}
+		}
+	}
+
+	return dict
+}
+
+////
 func (m *Manager) getDefaultClassValue(class, resourceSubType string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "InstanceID", Value: "%Default%", Type: wmi.Like}},

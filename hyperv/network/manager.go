@@ -9,11 +9,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	switchName = "Myst Bridge Switch"
+)
+
 type Manager struct {
 	con       *wmi.WMI
 	switchMgr *wmi.Result
 	vsMgr     *wmi.Result
 	imageMgr  *wmi.Result
+
+	// data
+	IPv4 string
 }
 
 // NewVMManager returns a new Manager type
@@ -51,7 +58,7 @@ func (m *Manager) GetVMByName(vmName string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
 	}
-	return m.con.GetOne(ComputerSystem, []string{}, qParams)
+	return m.con.GetOne(ComputerSystemClass, []string{}, qParams)
 }
 
 func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
@@ -276,7 +283,7 @@ func (m *Manager) StartVM(vmName string) error {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
 	}
-	vm, err := m.con.GetOne(ComputerSystem, []string{}, qParams)
+	vm, err := m.con.GetOne(ComputerSystemClass, []string{}, qParams)
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -364,4 +371,33 @@ func (m *Manager) GetVirtSwitchByName(switchName string) (*wmi.Result, error) {
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
 	return m.con.GetOne(VMSwitchClass, []string{}, qParams)
+}
+
+func (m *Manager) GetIP(vmName string) error {
+
+	vm, err := m.GetVMByName(vmName)
+	if err != nil {
+		return err
+	}
+	vmID, err := vm.GetProperty("Name")
+	if err != nil {
+		return errors.Wrap(err, "GetProperty")
+	}
+	fmt.Println(vmID.Value())
+
+	qParams := []wmi.Query{
+		&wmi.AndQuery{wmi.QueryFields{Key: "SystemName", Value: vmID.Value(), Type: wmi.Equals}},
+	}
+	res, err := m.con.GetOne("Msvm_KvpExchangeComponent", []string{}, qParams)
+	if err != nil {
+		return errors.Wrap(err, "GetOne")
+	}
+	p, err := res.GetProperty("GuestIntrinsicExchangeItems")
+	if err != nil {
+		return errors.Wrap(err, "GetProperty")
+	}
+
+	kv := decodeXMLArray(p.ToArray().ToValueArray())
+	m.IPv4 = kv["NetworkAddressIPv4"]
+	return nil
 }

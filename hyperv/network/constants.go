@@ -2,10 +2,8 @@ package network
 
 // Hyper-V networking constants
 const (
-	switchName = "Myst Bridge Switch"
-
 	ExternalPort                  = "Msvm_ExternalEthernetPort"
-	ComputerSystem                = "Msvm_ComputerSystem"
+	ComputerSystemClass           = "Msvm_ComputerSystem"
 	VMSwitchClass                 = "Msvm_VirtualEthernetSwitch"
 	VMSwitchSettings              = "Msvm_VirtualEthernetSwitchSettingData"
 	VMSystemSettingData           = "Msvm_VirtualSystemSettingData"
