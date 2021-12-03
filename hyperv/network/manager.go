@@ -14,10 +14,11 @@ const (
 )
 
 type Manager struct {
-	con       *wmi.WMI
-	switchMgr *wmi.Result
-	vsMgr     *wmi.Result
-	imageMgr  *wmi.Result
+	con              *wmi.WMI
+	switchMgr        *wmi.Result
+	vsMgr            *wmi.Result
+	imageMgr         *wmi.Result
+	guestFileService *wmi.Result // file copy service
 
 	// data
 	IPv4 string
@@ -399,5 +400,91 @@ func (m *Manager) GetIP(vmName string) error {
 
 	kv := decodeXMLArray(p.ToArray().ToValueArray())
 	m.IPv4 = kv["NetworkAddressIPv4"]
+	return nil
+}
+
+func (m *Manager) SetupGuestServices(vmName string) error {
+	vm, err := m.GetVMByName(vmName)
+	if err != nil {
+		return err
+	}
+	fmt.Println(vm.Path())
+
+	// enable Guest Service Interface Component
+	assoc, err := vm.Get("associators_", nil, "Msvm_VirtualSystemSettingData")
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	virtualSystemSettingData, _ := assoc.ItemAtIndex(0)
+	assoc, err = virtualSystemSettingData.Get("associators_", nil, "Msvm_GuestServiceInterfaceComponentSettingData")
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	guestSvcSettingData, err := assoc.ItemAtIndex(0)
+	if err != nil {
+		return errors.Wrap(err, "ItemAtIndex")
+	}
+	guestSvcSettingData.Set("EnabledState", 2)
+	guestSvcSettingDataStr, _ := guestSvcSettingData.GetText(2)
+
+	jobPath := ole.VARIANT{}
+	resultingSystem := ole.VARIANT{}
+	jobState, err := m.vsMgr.Get("ModifyGuestServiceSettings", []string{guestSvcSettingDataStr}, &resultingSystem, &jobPath)
+	if err != nil {
+		return errors.Wrap(err, "DefineSystem")
+	}
+	err = m.waitForJob(jobState, jobPath)
+	if err != nil {
+		return err
+	}
+
+	assoc, err = vm.Get("associators_", "Msvm_SystemDevice", "Msvm_GuestServiceInterfaceComponent", nil, nil, false)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	guestServiceInterfaceComponent, _ := assoc.ItemAtIndex(0)
+	fmt.Println(guestServiceInterfaceComponent)
+
+	assoc, err = guestServiceInterfaceComponent.Get("associators_", "Msvm_RegisteredGuestService", "Msvm_GuestFileService", nil, nil, false)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	m.guestFileService, err = assoc.ItemAtIndex(0)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+
+	return nil
+}
+
+func (m *Manager) CopyFile(src, dst string) error {
+	fmt.Println(m.guestFileService)
+
+	// create switch settings in xml representation
+	copyFileToGuestSettingDataClass, err := m.con.Get("Msvm_CopyFileToGuestSettingData")
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	wmiCopyFileToGuestSettingData, err := copyFileToGuestSettingDataClass.Get("SpawnInstance_")
+	if err != nil {
+		return errors.Wrap(err, "SpawnInstance_")
+	}
+	wmiCopyFileToGuestSettingData.Set("SourcePath", src)
+	wmiCopyFileToGuestSettingData.Set("DestinationPath", dst)
+	wmiCopyFileToGuestSettingData.Set("OverwriteExisting", true)
+	wmiCopyFileToGuestSettingData.Set("CreateFullPath", true)
+	copyCmdTxt, _ := wmiCopyFileToGuestSettingData.GetText(2)
+
+	jobPath := ole.VARIANT{}
+	jobState, err := m.guestFileService.Get("CopyFilesToGuest", []string{copyCmdTxt}, &jobPath)
+	if err != nil {
+		return errors.Wrap(err, "CopyFilesToGuest")
+	}
+	fmt.Println("jobState", jobState, jobPath.Value())
+	fmt.Println("jobState", jobState.Value(), jobState.Value().(int32))
+
+	j, err := NewJobState(jobPath.Value().(string))
+	fmt.Println(j, err)
+
 	return nil
 }

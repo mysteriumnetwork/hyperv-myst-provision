@@ -5,18 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gabriel-samfira/go-wmi/wmi"
+	"github.com/itzg/go-flagsfiller"
+	"github.com/mysteriumnetwork/hyperv-node/common"
+	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/itzg/go-flagsfiller"
-
-	"github.com/mysteriumnetwork/hyperv-node/common"
-	"github.com/mysteriumnetwork/hyperv-node/hyperv"
-	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
-	"github.com/mysteriumnetwork/hyperv-node/powershell"
 )
 
 type flagsSet struct {
@@ -57,6 +52,7 @@ func main() {
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
 		log.Fatal(err)
 	}
+	fmt.Println(vm.Path())
 
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
 		// create
@@ -69,39 +65,44 @@ func main() {
 		return
 	}
 	//mgr.StartVM(flags.VMName)
-	//return
 
-	shell := powershell.New(powershell.OptionDebugPrint)
-	hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
+	err = mgr.SetupGuestServices(flags.VMName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
 
-	/*	if flags.Force {
-			hyperV.StopVM()
-			hyperV.RemoveVM()
-		}
-
-		err := hyperV.ImportVM()
-		if err != nil {
-			log.Fatal(err)
-		}
-	*/
-
-	//err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	//shell := powershell.New(powershell.OptionDebugPrint)
+	//hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
+	//
+	///*	if flags.Force {
+	//		hyperV.StopVM()
+	//		hyperV.RemoveVM()
+	//	}
+	//
+	//	err := hyperV.ImportVM()
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//*/
+	//
+	////err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
+	////if err != nil {
+	////	log.Fatal(err)
+	////}
+	//
+	//err = hyperV.StartVM()
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-
-	err = hyperV.StartVM()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = hyperV.WaitUntilBooted(
-		time.Duration(flags.VMBootPollSeconds)*time.Second,
-		time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//
+	//err = hyperV.WaitUntilBooted(
+	//	time.Duration(flags.VMBootPollSeconds)*time.Second,
+	//	time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
+	//)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	var keystorePath string
 	if flags.KeystoreDir != "" {
@@ -118,12 +119,13 @@ func main() {
 			return nil
 		}
 
-		hyperV.CopyVMFile(path, "/root/.mysterium/keystore/")
-		return nil
+		//hyperV.CopyVMFile(path, "/root/.mysterium/keystore/")
+		return mgr.CopyFile(path, "/root/.mysterium/keystore/")
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func flagsParse() {
