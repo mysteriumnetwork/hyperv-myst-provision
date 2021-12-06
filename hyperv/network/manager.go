@@ -281,16 +281,13 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 }
 
 func (m *Manager) StartVM(vmName string) error {
-	qParams := []wmi.Query{
-		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
-	}
-	vm, err := m.con.GetOne(ComputerSystemClass, []string{}, qParams)
+	vm, err := m.GetVMByName(vmName)
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
 
 	jobPath := ole.VARIANT{}
-	jobState, err := vm.Get("RequestStateChange", 2, nil, &jobPath)
+	jobState, err := vm.Get("RequestStateChange", 2, &jobPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "RequestStateChange")
 	}
@@ -403,12 +400,43 @@ func (m *Manager) GetIP(vmName string) error {
 	return nil
 }
 
-func (m *Manager) SetupGuestServices(vmName string) error {
+func (m *Manager) StartGuestFileService(vmName string) error {
 	vm, err := m.GetVMByName(vmName)
 	if err != nil {
 		return err
 	}
-	fmt.Println(vm.Path())
+	vmPath, _ := vm.Path()
+	fmt.Println("VM:", vmPath)
+
+	// get instance of guestFileService for a _running_ vm
+	assoc, err := vm.Get("associators_", "Msvm_SystemDevice", "Msvm_GuestServiceInterfaceComponent", nil, nil, false)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	guestServiceInterfaceComponent, err := assoc.ItemAtIndex(0)
+	if err != nil {
+		return errors.Wrap(err, "ItemAtIndex")
+	}
+	fmt.Println(guestServiceInterfaceComponent)
+
+	assoc, err = guestServiceInterfaceComponent.Get("associators_", "Msvm_RegisteredGuestService", "Msvm_GuestFileService", nil, nil, false)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	m.guestFileService, err = assoc.ItemAtIndex(0)
+	if err != nil {
+		return errors.Wrap(err, "Get")
+	}
+	return nil
+}
+
+func (m *Manager) EnableGuestServices(vmName string) error {
+	vm, err := m.GetVMByName(vmName)
+	if err != nil {
+		return err
+	}
+	vmPath, _ := vm.Path()
+	fmt.Println("VM:", vmPath)
 
 	// enable Guest Service Interface Component
 	assoc, err := vm.Get("associators_", nil, "Msvm_VirtualSystemSettingData")
@@ -438,27 +466,10 @@ func (m *Manager) SetupGuestServices(vmName string) error {
 		return err
 	}
 
-	assoc, err = vm.Get("associators_", "Msvm_SystemDevice", "Msvm_GuestServiceInterfaceComponent", nil, nil, false)
-	if err != nil {
-		return errors.Wrap(err, "Get")
-	}
-	guestServiceInterfaceComponent, _ := assoc.ItemAtIndex(0)
-	fmt.Println(guestServiceInterfaceComponent)
-
-	assoc, err = guestServiceInterfaceComponent.Get("associators_", "Msvm_RegisteredGuestService", "Msvm_GuestFileService", nil, nil, false)
-	if err != nil {
-		return errors.Wrap(err, "Get")
-	}
-	m.guestFileService, err = assoc.ItemAtIndex(0)
-	if err != nil {
-		return errors.Wrap(err, "Get")
-	}
-
 	return nil
 }
 
 func (m *Manager) CopyFile(src, dst string) error {
-	fmt.Println(m.guestFileService)
 
 	// create switch settings in xml representation
 	copyFileToGuestSettingDataClass, err := m.con.Get("Msvm_CopyFileToGuestSettingData")
@@ -480,11 +491,12 @@ func (m *Manager) CopyFile(src, dst string) error {
 	if err != nil {
 		return errors.Wrap(err, "CopyFilesToGuest")
 	}
-	fmt.Println("jobState", jobState, jobPath.Value())
-	fmt.Println("jobState", jobState.Value(), jobState.Value().(int32))
 
-	j, err := NewJobState(jobPath.Value().(string))
-	fmt.Println(j, err)
+	_ = jobState
+	//fmt.Println("jobState", jobState, jobPath.Value())
+	//fmt.Println("jobState", jobState.Value(), jobState.Value().(int32))
+	//j, err := NewJobState(jobPath.Value().(string))
+	//fmt.Println(j, err)
 
 	return nil
 }

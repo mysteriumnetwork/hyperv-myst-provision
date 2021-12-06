@@ -64,13 +64,20 @@ func main() {
 
 		return
 	}
-	//mgr.StartVM(flags.VMName)
-
-	err = mgr.SetupGuestServices(flags.VMName)
+	err = mgr.EnableGuestServices(flags.VMName)
 	if err != nil {
 		log.Fatal(err)
 	}
-	return
+	err = mgr.StartVM(flags.VMName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = mgr.StartGuestFileService(flags.VMName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//return
 
 	//shell := powershell.New(powershell.OptionDebugPrint)
 	//hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
@@ -104,6 +111,7 @@ func main() {
 	//	log.Fatal(err)
 	//}
 
+	fmt.Println("Copy keystore")
 	var keystorePath string
 	if flags.KeystoreDir != "" {
 		keystorePath = flags.KeystoreDir
