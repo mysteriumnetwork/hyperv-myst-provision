@@ -1,5 +1,7 @@
 package network
 
+import "errors"
+
 // Hyper-V networking constants
 const (
 	ExternalPort                  = "Msvm_ExternalEthernetPort"
@@ -31,4 +33,8 @@ const (
 	OperationModeTrunk          = 2
 	ETHConnResSubType           = "Microsoft:Hyper-V:Ethernet Connection"
 	NetAdapterClass             = "MSFT_NetAdapter"
+)
+
+var (
+	errEmptyIP = errors.New("could not resolve IP address")
 )

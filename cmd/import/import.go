@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type flagsSet struct {
@@ -38,78 +39,48 @@ var flags flagsSet
 func main() {
 	flagsParse()
 
-	mgr, err := network.NewVMManager()
+	mgr, err := network.NewVMManager(flags.VMName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
-	if err != nil {
+	if err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
 		log.Fatal(err)
 	}
 
-	vm, err := mgr.GetVMByName(flags.VMName)
+	if flags.Force {
+		if err := mgr.RemoveVM(); err != nil {
+			log.Fatal(err)
+		}
+	}
+	vm, err := mgr.GetVM()
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
 		log.Fatal(err)
 	}
-	fmt.Println(vm.Path())
-
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
-		// create
-		vhdFilePath := `C:\Users\user\src\work_dir\alpine-vm-disk\alpine-vm-disk.vhdx`
-		err := mgr.CreateVM(flags.VMName, vhdFilePath)
+		vhdFilePath := flags.WorkDir + `\alpine-vm-disk\alpine-vm-disk.vhdx`
+		err := mgr.CreateVM(vhdFilePath)
 		if err != nil {
 			fmt.Println(err)
 		}
-
-		return
 	}
-	err = mgr.EnableGuestServices(flags.VMName)
+	if err = mgr.EnableGuestServices(); err != nil {
+		log.Fatal(err)
+	}
+	if err = mgr.StartVM(); err != nil {
+		log.Fatal(err)
+	}
+	if err = mgr.StartGuestFileService(); err != nil {
+		log.Fatal(err)
+	}
+
+	err = mgr.WaitUntilBooted(
+		time.Duration(flags.VMBootPollSeconds)*time.Second,
+		time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = mgr.StartVM(flags.VMName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = mgr.StartGuestFileService(flags.VMName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	//return
-
-	//shell := powershell.New(powershell.OptionDebugPrint)
-	//hyperV := hyperv.New(flags.VMName, flags.WorkDir, "", shell)
-	//
-	///*	if flags.Force {
-	//		hyperV.StopVM()
-	//		hyperV.RemoveVM()
-	//	}
-	//
-	//	err := hyperV.ImportVM()
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	//*/
-	//
-	////err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign()
-	////if err != nil {
-	////	log.Fatal(err)
-	////}
-	//
-	//err = hyperV.StartVM()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//err = hyperV.WaitUntilBooted(
-	//	time.Duration(flags.VMBootPollSeconds)*time.Second,
-	//	time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
-	//)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 
 	fmt.Println("Copy keystore")
 	var keystorePath string
@@ -127,7 +98,6 @@ func main() {
 			return nil
 		}
 
-		//hyperV.CopyVMFile(path, "/root/.mysterium/keystore/")
 		return mgr.CopyFile(path, "/root/.mysterium/keystore/")
 	})
 	if err != nil {

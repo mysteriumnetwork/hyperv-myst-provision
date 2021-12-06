@@ -7,6 +7,7 @@ import (
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
+	"time"
 )
 
 const (
@@ -14,18 +15,19 @@ const (
 )
 
 type Manager struct {
+	vmName           string
 	con              *wmi.WMI
 	switchMgr        *wmi.Result
 	vsMgr            *wmi.Result
 	imageMgr         *wmi.Result
 	guestFileService *wmi.Result // file copy service
 
-	// data
-	IPv4 string
+	// guest KV map
+	Kvp map[string]string
 }
 
 // NewVMManager returns a new Manager type
-func NewVMManager() (*Manager, error) {
+func NewVMManager(vmName string) (*Manager, error) {
 	w, err := wmi.NewConnection(".", `root\virtualization\v2`)
 	if err != nil {
 		return nil, err
@@ -46,23 +48,25 @@ func NewVMManager() (*Manager, error) {
 	}
 
 	sw := &Manager{
-		con: w,
+		vmName: vmName,
+		con:    w,
 
 		switchMgr: switchMgr,
 		vsMgr:     vsMgr,
 		imageMgr:  imageMgr,
+		Kvp:       nil,
 	}
 	return sw, nil
 }
 
-func (m *Manager) GetVMByName(vmName string) (*wmi.Result, error) {
+func (m *Manager) GetVM() (*wmi.Result, error) {
 	qParams := []wmi.Query{
-		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: vmName, Type: wmi.Equals}},
+		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: m.vmName, Type: wmi.Equals}},
 	}
 	return m.con.GetOne(ComputerSystemClass, []string{}, qParams)
 }
 
-func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
+func (m *Manager) CreateVM(vhdFilePath string) error {
 
 	// create switch settings in xml representation
 	data, err := m.con.Get(VMSystemSettingData)
@@ -73,7 +77,7 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	if err != nil {
 		return errors.Wrap(err, "SpawnInstance_")
 	}
-	systemInstance.Set("ElementName", vmName)
+	systemInstance.Set("ElementName", m.vmName)
 	systemInstance.Set("Notes", []string{"VM for mysterium node"})
 	systemInstance.Set("VirtualSystemSubType", "Microsoft:Hyper-V:SubType:2")
 	systemInstance.Set("SecureBootEnabled", false)
@@ -112,7 +116,6 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 		return err
 	}
 
-	//vmLocationURI := resultingSystem1.Value().(string)
 	vmLocationURI := getPathFromResultingSystem(resultingSystem1)
 	fmt.Println("vmLocationURI:", vmLocationURI)
 
@@ -280,8 +283,9 @@ func (m *Manager) CreateVM(vmName, vhdFilePath string) error {
 	return nil
 }
 
-func (m *Manager) StartVM(vmName string) error {
-	vm, err := m.GetVMByName(vmName)
+func (m *Manager) StartVM() error {
+	fmt.Println("StartVM")
+	vm, err := m.GetVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -371,9 +375,8 @@ func (m *Manager) GetVirtSwitchByName(switchName string) (*wmi.Result, error) {
 	return m.con.GetOne(VMSwitchClass, []string{}, qParams)
 }
 
-func (m *Manager) GetIP(vmName string) error {
-
-	vm, err := m.GetVMByName(vmName)
+func (m *Manager) GetGuestKVP() error {
+	vm, err := m.GetVM()
 	if err != nil {
 		return err
 	}
@@ -381,7 +384,6 @@ func (m *Manager) GetIP(vmName string) error {
 	if err != nil {
 		return errors.Wrap(err, "GetProperty")
 	}
-	fmt.Println(vmID.Value())
 
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "SystemName", Value: vmID.Value(), Type: wmi.Equals}},
@@ -395,13 +397,12 @@ func (m *Manager) GetIP(vmName string) error {
 		return errors.Wrap(err, "GetProperty")
 	}
 
-	kv := decodeXMLArray(p.ToArray().ToValueArray())
-	m.IPv4 = kv["NetworkAddressIPv4"]
+	m.Kvp = decodeXMLArray(p.ToArray().ToValueArray())
 	return nil
 }
 
-func (m *Manager) StartGuestFileService(vmName string) error {
-	vm, err := m.GetVMByName(vmName)
+func (m *Manager) StartGuestFileService() error {
+	vm, err := m.GetVM()
 	if err != nil {
 		return err
 	}
@@ -417,7 +418,6 @@ func (m *Manager) StartGuestFileService(vmName string) error {
 	if err != nil {
 		return errors.Wrap(err, "ItemAtIndex")
 	}
-	fmt.Println(guestServiceInterfaceComponent)
 
 	assoc, err = guestServiceInterfaceComponent.Get("associators_", "Msvm_RegisteredGuestService", "Msvm_GuestFileService", nil, nil, false)
 	if err != nil {
@@ -430,8 +430,8 @@ func (m *Manager) StartGuestFileService(vmName string) error {
 	return nil
 }
 
-func (m *Manager) EnableGuestServices(vmName string) error {
-	vm, err := m.GetVMByName(vmName)
+func (m *Manager) EnableGuestServices() error {
+	vm, err := m.GetVM()
 	if err != nil {
 		return err
 	}
@@ -499,4 +499,57 @@ func (m *Manager) CopyFile(src, dst string) error {
 	//fmt.Println(j, err)
 
 	return nil
+}
+
+func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
+	fmt.Printf("waiting for VM `%s` to boot\n", m.vmName)
+	for {
+		select {
+		case <-time.After(pollEvery):
+			err := m.GetGuestKVP()
+			if err != nil {
+				fmt.Printf("unexpected error while waiting for VM `%s` to boot, %s\n", m.vmName, err)
+				return err
+			}
+			ip := m.Kvp["NetworkAddressIPv4"]
+			if ip != "" {
+				fmt.Println("VM IP:", ip)
+				return nil
+			}
+
+		case <-time.After(timeout):
+			fmt.Printf("time out while waiting for VM `%s` to boot\n", m.vmName)
+			return errors.New("Timeout")
+		}
+	}
+}
+
+func (m *Manager) RemoveVM() error {
+	vm, err := m.GetVM()
+	if err != nil {
+		return errors.Wrap(err, "GetVM")
+	}
+	vmPath, err := vm.Path()
+	if err != nil {
+		return errors.Wrap(err, "GetVM")
+	}
+
+	// stop
+	jobPath1 := ole.VARIANT{}
+	jobState1, err := vm.Get("RequestStateChange", 3, &jobPath1, nil)
+	if err != nil {
+		return errors.Wrap(err, "RequestStateChange")
+	}
+	m.waitForJob(jobState1, jobPath1)
+	if err != nil {
+		return err
+	}
+
+	// remove
+	jobPath2 := ole.VARIANT{}
+	jobState2, err := m.vsMgr.Get("DestroySystem", vmPath, &jobPath2)
+	if err != nil {
+		return errors.Wrap(err, "DestroySystem")
+	}
+	return m.waitForJob(jobState2, jobPath2)
 }
