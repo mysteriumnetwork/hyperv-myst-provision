@@ -43,7 +43,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
 		log.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func main() {
 		log.Fatal(err)
 	}
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
-		vhdFilePath := flags.WorkDir + `\alpine-vm-disk\alpine-vm-disk.vhdx`
+		vhdFilePath := flags.WorkDir + `\alpine-vm-disk.vhdx`
 		err := mgr.CreateVM(vhdFilePath)
 		if err != nil {
 			fmt.Println(err)

@@ -89,7 +89,7 @@ func (m *Manager) CreateVM(vhdFilePath string) error {
 	}
 
 	// memory
-	data, err = m.con.Get(MsvmMemorySettingData)
+	data, err = m.con.Get(MemorySettingData)
 	if err != nil {
 		return errors.Wrap(err, "Get")
 	}
@@ -254,7 +254,7 @@ func (m *Manager) CreateVM(vhdFilePath string) error {
 	sw, _ := m.GetVirtSwitchByName(switchName)
 	swPath, _ := sw.Path()
 
-	portAllocRes, err := m.getDefaultClassValue("Msvm_EthernetPortAllocationSettingData", "")
+	portAllocRes, err := m.getDefaultClassValue(vm.EthernetPortAllocationSettingDataClass, "")
 	if err != nil {
 		return err
 	}
@@ -291,7 +291,7 @@ func (m *Manager) StartVM() error {
 	}
 
 	jobPath := ole.VARIANT{}
-	jobState, err := vm.Get("RequestStateChange", 2, &jobPath, nil)
+	jobState, err := vm.Get("RequestStateChange", StateEnabled, &jobPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "RequestStateChange")
 	}
@@ -452,7 +452,7 @@ func (m *Manager) EnableGuestServices() error {
 	if err != nil {
 		return errors.Wrap(err, "ItemAtIndex")
 	}
-	guestSvcSettingData.Set("EnabledState", 2)
+	guestSvcSettingData.Set("EnabledState", StateEnabled)
 	guestSvcSettingDataStr, _ := guestSvcSettingData.GetText(2)
 
 	jobPath := ole.VARIANT{}
@@ -526,6 +526,9 @@ func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
 
 func (m *Manager) RemoveVM() error {
 	vm, err := m.GetVM()
+	if errors.Is(err, wmi.ErrNotFound) {
+		return nil
+	}
 	if err != nil {
 		return errors.Wrap(err, "GetVM")
 	}
@@ -536,7 +539,7 @@ func (m *Manager) RemoveVM() error {
 
 	// stop
 	jobPath1 := ole.VARIANT{}
-	jobState1, err := vm.Get("RequestStateChange", 3, &jobPath1, nil)
+	jobState1, err := vm.Get("RequestStateChange", StateDisabled, &jobPath1, nil)
 	if err != nil {
 		return errors.Wrap(err, "RequestStateChange")
 	}
