@@ -299,6 +299,22 @@ func (m *Manager) StartVM() error {
 	return m.waitForJob(jobState, jobPath)
 }
 
+func (m *Manager) StopVM() error {
+	fmt.Println("StopVM")
+	vm, err := m.GetVM()
+	if err != nil {
+		return errors.Wrap(err, "GetOne")
+	}
+
+	jobPath := ole.VARIANT{}
+	jobState, err := vm.Get("RequestStateChange", StateDisabled, &jobPath, nil)
+	if err != nil {
+		return errors.Wrap(err, "RequestStateChange")
+	}
+
+	return m.waitForJob(jobState, jobPath)
+}
+
 func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	// check if the switch exists
 	qParams := []wmi.Query{
