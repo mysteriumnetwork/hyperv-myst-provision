@@ -12,6 +12,7 @@ import (
 
 const (
 	switchName = "Myst Bridge Switch"
+	macAddress = "00155D21A42C"
 )
 
 type Manager struct {
@@ -226,12 +227,11 @@ func (m *Manager) CreateVM(vhdFilePath string) error {
 	if err != nil {
 		return errors.Wrap(err, "UUID4")
 	}
-	if networkRes.Set("VirtualSystemIdentifiers", []string{fmt.Sprintf("{%s}", newID2)}); err != nil {
-		return errors.Wrap(err, "VirtualSystemIdentifiers")
-	}
-	if err := networkRes.Set("ElementName", "Myst Network VM Adapter"); err != nil {
-		return errors.Wrap(err, "set ElementName")
-	}
+	networkRes.Set("VirtualSystemIdentifiers", []string{fmt.Sprintf("{%s}", newID2)})
+	networkRes.Set("ElementName", "Myst Network VM Adapter")
+	networkRes.Set("Address", macAddress)
+	networkRes.Set("StaticMacAddress", true)
+
 	networkStr, err := networkRes.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
