@@ -18,22 +18,23 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"net"
-	"time"
-
 	"github.com/Microsoft/go-winio"
+	"net"
 )
 
 const sock = `\\.\pipe\myst-vm-helper-pipe`
 
-func sendCommand(conn net.Conn, cmd string) {
-	fmt.Println("send > " + cmd)
-	conn.Write([]byte(cmd + "\n"))
+func sendCommand(conn net.Conn, m map[string]string) {
+	b, _ := json.Marshal(m)
+	fmt.Println("send > " + string(b))
+	conn.Write(b)
+	conn.Write([]byte("\n"))
 
-	b := make([]byte, 100)
-	conn.Read(b)
-	fmt.Println("rcv >", string(b))
+	out := make([]byte, 100)
+	conn.Read(out)
+	fmt.Println("rcv >", string(out))
 }
 
 func main() {
@@ -44,8 +45,13 @@ func main() {
 	}
 	defer conn.Close()
 
-	sendCommand(conn, "ping")
-	sendCommand(conn, "start-vm")
-	time.Sleep(10 * time.Second)
-	sendCommand(conn, "stop-vm")
+	m := map[string]string{"cmd": "ping"}
+	sendCommand(conn, m)
+
+	m = map[string]string{
+		"cmd":      "import-vm",
+		"keystore": `C:\Users\user\.mysterium\keystore`,
+		"work-dir": `C:\Users\user\src\work_dir\alpine-vm-disk\`}
+	sendCommand(conn, m)
+
 }

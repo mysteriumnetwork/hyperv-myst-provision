@@ -18,8 +18,9 @@
 package daemon
 
 const (
-	commandVersion = "version"
-	commandPing    = "ping"
-	commandStopVM  = "stop-vm"
-	commandStartVM = "start-vm"
+	commandVersion  = "version"
+	commandPing     = "ping"
+	commandStopVM   = "stop-vm"
+	commandStartVM  = "start-vm"
+	commandImportVM = "import-vm"
 )

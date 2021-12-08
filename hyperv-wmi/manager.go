@@ -1,4 +1,4 @@
-package network
+package hyperv_wmi
 
 import (
 	"fmt"
@@ -217,7 +217,7 @@ func (m *Manager) CreateVM(vhdFilePath string) error {
 		return err
 	}
 
-	// network adapter
+	// hyperv-wmi adapter
 	networkRes, err := m.getDefaultClassValue(vm.SyntheticEthernetPortSettingDataClass, "")
 	if err != nil {
 		return err
@@ -548,6 +548,7 @@ func (m *Manager) RemoveVM() error {
 	if err != nil {
 		return errors.Wrap(err, "GetVM")
 	}
+
 	vmPath, err := vm.Path()
 	if err != nil {
 		return errors.Wrap(err, "GetVM")

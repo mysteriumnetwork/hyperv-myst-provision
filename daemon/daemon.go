@@ -19,8 +19,10 @@ package daemon
 
 import (
 	"bufio"
+	"encoding/json"
+	"fmt"
 	"github.com/mysteriumnetwork/hyperv-node/daemon/transport"
-	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
+	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
 	"io"
 	"strings"
 
@@ -29,11 +31,11 @@ import (
 
 // Daemon - vm helper process.
 type Daemon struct {
-	mgr *network.Manager
+	mgr *hyperv_wmi2.Manager
 }
 
 // New creates a new daemon.
-func New(manager *network.Manager) Daemon {
+func New(manager *hyperv_wmi2.Manager) Daemon {
 	return Daemon{mgr: manager}
 }
 
@@ -49,8 +51,12 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 	for scan.Scan() {
 		line := scan.Bytes()
 		log.Debug().Msgf("> %s", line)
-		cmd := strings.Split(string(line), " ")
-		op := strings.ToLower(cmd[0])
+
+		m := make(map[string]string, 0)
+		err := json.Unmarshal([]byte(line), &m)
+		fmt.Println(m, err)
+		op := strings.ToLower(m["cmd"])
+
 		switch op {
 		case commandVersion:
 			answer.ok("")
@@ -75,6 +81,22 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			} else {
 				answer.ok()
 			}
+
+		case commandImportVM:
+			err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
+				Force:                true,
+				WorkDir:              m["work-dir"],
+				VMBootPollSeconds:    5,
+				VMBootTimeoutMinutes: 5,
+				KeystoreDir:          "",
+			})
+			if err != nil {
+				log.Err(err).Msgf("%s failed", commandImportVM)
+				answer.err(err)
+			} else {
+				answer.ok()
+			}
+
 		}
 	}
 }

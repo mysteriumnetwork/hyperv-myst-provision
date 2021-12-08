@@ -3,16 +3,10 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
-	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/itzg/go-flagsfiller"
 	"github.com/mysteriumnetwork/hyperv-node/common"
-	"github.com/mysteriumnetwork/hyperv-node/hyperv/network"
-	"io/fs"
+	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
 	"log"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 type flagsSet struct {
@@ -36,75 +30,6 @@ func (fs *flagsSet) validate() error {
 
 var flags flagsSet
 
-func main() {
-	flagsParse()
-
-	mgr, err := network.NewVMManager(flags.VMName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
-		log.Fatal(err)
-	}
-
-	if flags.Force {
-		if err := mgr.RemoveVM(); err != nil {
-			log.Fatal(err)
-		}
-	}
-	vm, err := mgr.GetVM()
-	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
-		log.Fatal(err)
-	}
-	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
-		vhdFilePath := flags.WorkDir + `\alpine-vm-disk.vhdx`
-		err := mgr.CreateVM(vhdFilePath)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	if err = mgr.EnableGuestServices(); err != nil {
-		log.Fatal(err)
-	}
-	if err = mgr.StartVM(); err != nil {
-		log.Fatal(err)
-	}
-	if err = mgr.StartGuestFileService(); err != nil {
-		log.Fatal(err)
-	}
-
-	err = mgr.WaitUntilBooted(
-		time.Duration(flags.VMBootPollSeconds)*time.Second,
-		time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Copy keystore")
-	var keystorePath string
-	if flags.KeystoreDir != "" {
-		keystorePath = flags.KeystoreDir
-	} else {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal(err)
-		}
-		keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
-	}
-	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
-		if info.IsDir() {
-			return nil
-		}
-
-		return mgr.CopyFile(path, "/root/.mysterium/keystore/")
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-}
-
 func flagsParse() {
 	if err := flagsfiller.New().Fill(flag.CommandLine, &flags); err != nil {
 		log.Fatal(err)
@@ -113,4 +38,84 @@ func flagsParse() {
 	if err := flags.validate(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func main() {
+	flagsParse()
+
+	mgr, err := hyperv_wmi2.NewVMManager(flags.VMName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = mgr.ImportVM(hyperv_wmi2.ImportOptions{
+		Force:                flags.Force,
+		WorkDir:              flags.WorkDir,
+		VMBootPollSeconds:    flags.VMBootPollSeconds,
+		VMBootTimeoutMinutes: flags.VMBootTimeoutMinutes,
+		KeystoreDir:          flags.KeystoreDir,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//if err = mgr.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//if flags.Force {
+	//	if err := mgr.RemoveVM(); err != nil {
+	//		log.Fatal(err)
+	//	}
+	//}
+	//vm, err := mgr.GetVM()
+	//if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+	//	log.Fatal(err)
+	//}
+	//if vm == nil || errors.Is(err, wmi.ErrNotFound) {
+	//	vhdFilePath := flags.WorkDir + `\alpine-vm-disk.vhdx`
+	//	err := mgr.CreateVM(vhdFilePath)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//	}
+	//}
+	//
+	//if err = mgr.EnableGuestServices(); err != nil {
+	//	log.Fatal(err)
+	//}
+	//if err = mgr.StartVM(); err != nil {
+	//	log.Fatal(err)
+	//}
+	//if err = mgr.StartGuestFileService(); err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//err = mgr.WaitUntilBooted(
+	//	time.Duration(flags.VMBootPollSeconds)*time.Second,
+	//	time.Duration(flags.VMBootTimeoutMinutes)*time.Minute,
+	//)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//var keystorePath string
+	//if flags.KeystoreDir != "" {
+	//	keystorePath = flags.KeystoreDir
+	//} else {
+	//	homeDir, err := os.UserHomeDir()
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	//	keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
+	//}
+	//err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
+	//	if info.IsDir() {
+	//		return nil
+	//	}
+	//
+	//	return mgr.CopyFile(path, "/root/.mysterium/keystore/")
+	//})
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+
 }

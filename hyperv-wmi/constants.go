@@ -1,4 +1,4 @@
-package network
+package hyperv_wmi
 
 import "errors"
 
