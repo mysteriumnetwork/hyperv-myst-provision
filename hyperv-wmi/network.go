@@ -49,6 +49,10 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
+	mac, err := eep.GetProperty("PermanentAddress")
+	if err != nil {
+		return errors.Wrap(err, "GetProperty")
+	}
 	eepPath, err := eep.Path()
 	if err != nil {
 		return errors.Wrap(err, "Path")
@@ -75,7 +79,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return errors.Wrap(err, "getDefaultClassValue")
 	}
 	intPortData.Set("HostResource", []string{hostPath})
-	intPortData.Set("Address", "54E1AD8F293B")
+	intPortData.Set("Address", mac.Value())
 	intPortData.Set("ElementName", switchName)
 	intPortDataStr, err := intPortData.GetText(1)
 	if err != nil {
