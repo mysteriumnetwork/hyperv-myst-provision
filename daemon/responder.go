@@ -18,6 +18,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -27,6 +28,30 @@ import (
 
 type responder struct {
 	io.Writer
+}
+
+type response struct {
+	State string `json:"state"`
+}
+
+func (r *responder) ok_(data map[string]string) {
+	m := map[string]interface{}{"resp": "ok", "data": data}
+	b, _ := json.Marshal(m)
+
+	r.message(string(b))
+}
+
+func (r *responder) err_(err error) {
+	m := map[string]interface{}{"resp": "error", "error": err.Error()}
+	b, _ := json.Marshal(m)
+
+	r.message(string(b))
+}
+func (r *responder) pong_() {
+	m := map[string]interface{}{"resp": "pong"}
+	b, _ := json.Marshal(m)
+
+	r.message(string(b))
 }
 
 func (r *responder) ok(result ...string) {

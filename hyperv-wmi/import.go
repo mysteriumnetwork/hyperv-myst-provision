@@ -24,6 +24,8 @@ func (m *Manager) ImportVM(opt ImportOptions) error {
 	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
 		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
 	}
+	return nil
+
 	if opt.Force {
 		if err := m.RemoveVM(); err != nil {
 			return errors.Wrap(err, "RemoveVM")

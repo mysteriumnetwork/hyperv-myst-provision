@@ -18,9 +18,15 @@
 package daemon
 
 const (
-	commandVersion  = "version"
+	commandVersion = "version"
+
 	commandPing     = "ping"
 	commandStopVM   = "stop-vm"
 	commandStartVM  = "start-vm"
 	commandImportVM = "import-vm"
+	commandGetKvp   = "get-kvp"
+
+	// get guest KVP
+	// wait for adapter is bound
+	//
 )

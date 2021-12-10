@@ -3,6 +3,7 @@ package hyperv_wmi
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
@@ -54,7 +55,30 @@ func decodeXMLArray(txt []interface{}) map[string]string {
 	return dict
 }
 
-////
+////////// manager class utils
+
+func (m *Manager) getHostPath() (string, error) {
+	qParams := []wmi.Query{
+		&wmi.AndQuery{
+			wmi.QueryFields{
+				Key:   "InstallDate",
+				Value: "NULL",
+				Type:  wmi.Is},
+		},
+	}
+	computerSystemResult, err := m.con.GetOne(vm.ComputerSystemClass, []string{}, qParams)
+	if err != nil {
+		return "", errors.Wrap(err, "GetOne")
+	}
+
+	pth, err := computerSystemResult.Path()
+	if err != nil {
+		return "", errors.Wrap(err, "path_")
+	}
+
+	return pth, nil
+}
+
 func (m *Manager) getDefaultClassValue(class, resourceSubType string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "InstanceID", Value: "%Default%", Type: wmi.Like}},

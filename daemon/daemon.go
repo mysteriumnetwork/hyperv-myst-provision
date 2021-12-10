@@ -59,27 +59,27 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 
 		switch op {
 		case commandVersion:
-			answer.ok("")
+			answer.ok_(nil)
 
 		case commandPing:
-			answer.ok("pong")
+			answer.pong_()
 
 		case commandStopVM:
 			err := d.mgr.StopVM()
 			if err != nil {
 				log.Err(err).Msgf("%s failed", commandStopVM)
-				answer.err(err)
+				answer.err_(err)
 			} else {
-				answer.ok()
+				answer.ok_(nil)
 			}
 
 		case commandStartVM:
 			err := d.mgr.StartVM()
 			if err != nil {
 				log.Err(err).Msgf("%s failed", commandStartVM)
-				answer.err(err)
+				answer.err_(err)
 			} else {
-				answer.ok()
+				answer.ok_(nil)
 			}
 
 		case commandImportVM:
@@ -92,10 +92,19 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			})
 			if err != nil {
 				log.Err(err).Msgf("%s failed", commandImportVM)
-				answer.err(err)
+				answer.err_(err)
 			} else {
-				answer.ok()
+				answer.ok_(nil)
 			}
+
+		case commandGetKvp:
+			//err = d.mgr.GetGuestKVP()
+			//if err != nil {
+			//	log.Err(err).Msgf("%s failed", commandImportVM)
+			//	answer.err_(err)
+			//} else {
+			answer.ok_(d.mgr.Kvp)
+			//}
 
 		}
 	}

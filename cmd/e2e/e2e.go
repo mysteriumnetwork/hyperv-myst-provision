@@ -32,7 +32,7 @@ func sendCommand(conn net.Conn, m map[string]string) {
 	conn.Write(b)
 	conn.Write([]byte("\n"))
 
-	out := make([]byte, 100)
+	out := make([]byte, 2000)
 	conn.Read(out)
 	fmt.Println("rcv >", string(out))
 }
@@ -45,13 +45,17 @@ func main() {
 	}
 	defer conn.Close()
 
-	m := map[string]string{"cmd": "ping"}
-	sendCommand(conn, m)
+	cmd := map[string]string{"cmd": "ping"}
+	sendCommand(conn, cmd)
 
-	m = map[string]string{
+	cmd = map[string]string{
 		"cmd":      "import-vm",
 		"keystore": `C:\Users\user\.mysterium\keystore`,
 		"work-dir": `C:\Users\user\src\work_dir\alpine-vm-disk\`}
-	sendCommand(conn, m)
+	sendCommand(conn, cmd)
 
+	cmd = map[string]string{
+		"cmd": "get-kvp",
+	}
+	sendCommand(conn, cmd)
 }
