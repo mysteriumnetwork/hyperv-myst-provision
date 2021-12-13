@@ -21,6 +21,9 @@ func (m *Manager) GetSwitch() (*wmi.Result, error) {
 func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	// check if the switch exists
 	_, err := m.GetSwitch()
+	if err == nil {
+		return nil
+	}
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
 		return errors.Wrap(err, "GetOne")
 	}
