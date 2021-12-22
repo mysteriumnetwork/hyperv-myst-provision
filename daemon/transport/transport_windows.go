@@ -25,7 +25,7 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
-const sock = `\\.\pipe\myst-vm-helper-pipe`
+const sock = `\\.\pipe\myst-vm-helper`
 
 // Start starts a listener on a unix domain socket.
 // Conversation is handled by the handlerFunc.

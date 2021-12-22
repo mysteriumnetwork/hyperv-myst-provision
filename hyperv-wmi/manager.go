@@ -2,12 +2,13 @@ package hyperv_wmi
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/gabriel-samfira/go-wmi/utils"
 	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
-	"time"
 )
 
 const (
