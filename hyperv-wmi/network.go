@@ -1,6 +1,7 @@
 package hyperv_wmi
 
 import (
+	"fmt"
 	"github.com/gabriel-samfira/go-wmi/virt/network"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
@@ -20,7 +21,7 @@ func (m *Manager) GetSwitch() (*wmi.Result, error) {
 }
 
 // Find a network adapter with minimum metric and use it for virtual network switch
-func (m *Manager) FindDefaultNetworkAdapter() (*wmi.Result, error) {
+func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, error) {
 	adapterConfs := make([]adapter, 0)
 
 	qParams := []wmi.Query{
@@ -36,32 +37,42 @@ func (m *Manager) FindDefaultNetworkAdapter() (*wmi.Result, error) {
 		id, _ := v.GetProperty("SettingID")
 		description, _ := v.GetProperty("Description")
 
-		adapterConfs = append(adapterConfs, adapter{
+		a := adapter{
 			id:          id.Value().(string),
 			description: description.Value().(string),
 			metric:      c.Value().(int32),
-		})
+		}
+		adapterConfs = append(adapterConfs, a)
+		fmt.Println("a1>", a)
 	}
 	sort.Sort(metricSorter(adapterConfs))
 	for _, ac := range adapterConfs {
-		a, err := m.findNetworkAdapterByID(ac.id)
+		a, err := m.findNetworkAdapterByID(ac.id, preferEthernet)
 		if err == nil {
 			return a, nil
 		}
 	}
+	// TODO: fallback to wifi
+
 	return nil, nil
 }
 
-func (m *Manager) findNetworkAdapterByID(id string) (*wmi.Result, error) {
+func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.Result, error) {
+	fmt.Println("findNetworkAdapterByID>", preferEthernet)
+
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
 		&wmi.AndQuery{wmi.QueryFields{Key: "DeviceID", Value: "Microsoft:" + id, Type: wmi.Equals}},
 	}
+
 	eep, err := m.con.GetOne(network.ExternalPort, []string{}, qParams)
 	if !errors.Is(err, wmi.ErrNotFound) && err != nil {
 		return nil, err
 	}
 
+	if preferEthernet {
+		return eep, err
+	}
 	eep, err = m.con.GetOne(WifiPort, []string{}, qParams)
 	return eep, err
 }
@@ -92,7 +103,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return errors.Wrap(err, "GetText")
 	}
 
-	eep, err := m.FindDefaultNetworkAdapter()
+	eep, err := m.FindDefaultNetworkAdapter(true)
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
