@@ -5,6 +5,7 @@ import (
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
+	"sort"
 )
 
 const (
@@ -16,6 +17,53 @@ func (m *Manager) GetSwitch() (*wmi.Result, error) {
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
 	return m.con.GetOne(VMSwitchClass, []string{}, qParams)
+}
+
+// Find a network adapter with minimum metric and use it for virtual network switch
+func (m *Manager) FindDefaultNetworkAdapter() (*wmi.Result, error) {
+	adapterConfs := make([]adapter, 0)
+
+	qParams := []wmi.Query{
+		&wmi.AndQuery{wmi.QueryFields{Key: "IPEnabled", Value: true, Type: wmi.Equals}},
+	}
+	confs, err := m.cimv2.Gwmi("Win32_NetworkAdapterConfiguration", []string{}, qParams)
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	el, _ := confs.Elements()
+	for _, v := range el {
+		c, _ := v.GetProperty("IPConnectionMetric")
+		id, _ := v.GetProperty("SettingID")
+		description, _ := v.GetProperty("Description")
+
+		adapterConfs = append(adapterConfs, adapter{
+			id:          id.Value().(string),
+			description: description.Value().(string),
+			metric:      c.Value().(int32),
+		})
+	}
+	sort.Sort(metricSorter(adapterConfs))
+	for _, ac := range adapterConfs {
+		a, err := m.findNetworkAdapterByID(ac.id)
+		if err == nil {
+			return a, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *Manager) findNetworkAdapterByID(id string) (*wmi.Result, error) {
+	qParams := []wmi.Query{
+		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
+		&wmi.AndQuery{wmi.QueryFields{Key: "DeviceID", Value: "Microsoft:" + id, Type: wmi.Equals}},
+	}
+	eep, err := m.con.GetOne(network.ExternalPort, []string{}, qParams)
+	if !errors.Is(err, wmi.ErrNotFound) && err != nil {
+		return nil, err
+	}
+
+	eep, err = m.con.GetOne(WifiPort, []string{}, qParams)
+	return eep, err
 }
 
 func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
@@ -44,18 +92,12 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 		return errors.Wrap(err, "GetText")
 	}
 
+	eep, err := m.FindDefaultNetworkAdapter()
+	if err != nil {
+		return errors.Wrap(err, "FindDefaultNetworkAdapter")
+	}
+
 	// find external ethernet port and get its device eepPath
-	qParams := []wmi.Query{
-		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
-	}
-	eep, err := m.con.GetOne(ExternalPort, []string{}, qParams)
-	if err != nil {
-		return errors.Wrap(err, "GetOne")
-	}
-	mac, err := eep.GetProperty("PermanentAddress")
-	if err != nil {
-		return errors.Wrap(err, "GetProperty")
-	}
 	eepPath, err := eep.Path()
 	if err != nil {
 		return errors.Wrap(err, "Path")
@@ -73,6 +115,10 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 
 	// SetInternalPort will create an internal port which will allow the OS to manage this switches network settings.
+	mac, err := eep.GetProperty("PermanentAddress")
+	if err != nil {
+		return errors.Wrap(err, "GetProperty")
+	}
 	hostPath, err := m.getHostPath()
 	if err != nil {
 		return errors.Wrap(err, "getHostPath")

@@ -47,6 +47,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	err = mgr.ImportVM(hyperv_wmi2.ImportOptions{
 		Force:                flags.Force,
 		WorkDir:              flags.WorkDir,

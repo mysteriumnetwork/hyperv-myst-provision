@@ -117,3 +117,15 @@ func (m *Manager) waitForJob(jobState *wmi.Result, jobPath ole.VARIANT) error {
 //	}
 //	return nil
 //}
+
+///
+type adapter struct {
+	description string
+	id          string
+	metric      int32
+}
+type metricSorter []adapter
+
+func (a metricSorter) Len() int           { return len(a) }
+func (a metricSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a metricSorter) Less(i, j int) bool { return a[i].metric < a[j].metric }

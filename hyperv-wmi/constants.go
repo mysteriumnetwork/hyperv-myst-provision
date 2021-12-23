@@ -4,7 +4,9 @@ import "errors"
 
 // Hyper-V networking constants
 const (
-	ExternalPort                  = "Msvm_ExternalEthernetPort"
+	WifiPort     = "Msvm_WifiPort"
+	ExternalPort = "Msvm_ExternalEthernetPort"
+
 	ComputerSystemClass           = "Msvm_ComputerSystem"
 	VMSwitchClass                 = "Msvm_VirtualEthernetSwitch"
 	VMSwitchSettings              = "Msvm_VirtualEthernetSwitchSettingData"

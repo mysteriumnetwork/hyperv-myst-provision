@@ -16,7 +16,9 @@ const (
 )
 
 type Manager struct {
-	vmName           string
+	vmName string
+
+	cimv2            *wmi.WMI
 	con              *wmi.WMI
 	switchMgr        *wmi.Result
 	vsMgr            *wmi.Result
@@ -29,6 +31,11 @@ type Manager struct {
 
 // NewVMManager returns a new Manager type
 func NewVMManager(vmName string) (*Manager, error) {
+	cimv2, err := wmi.NewConnection(".", `root\cimv2`)
+	if err != nil {
+		return nil, err
+	}
+
 	w, err := wmi.NewConnection(".", `root\virtualization\v2`)
 	if err != nil {
 		return nil, err
@@ -50,8 +57,9 @@ func NewVMManager(vmName string) (*Manager, error) {
 
 	sw := &Manager{
 		vmName: vmName,
-		con:    w,
 
+		cimv2:     cimv2,
+		con:       w,
 		switchMgr: switchMgr,
 		vsMgr:     vsMgr,
 		imageMgr:  imageMgr,

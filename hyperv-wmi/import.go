@@ -2,12 +2,13 @@ package hyperv_wmi
 
 import (
 	"fmt"
-	"github.com/gabriel-samfira/go-wmi/wmi"
-	"github.com/pkg/errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/gabriel-samfira/go-wmi/wmi"
+	"github.com/pkg/errors"
 )
 
 type ImportOptions struct {
