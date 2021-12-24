@@ -3,8 +3,9 @@ package provisioner
 import (
 	"errors"
 	"fmt"
-	"github.com/dghubble/sling"
 	"time"
+
+	"github.com/dghubble/sling"
 )
 
 var errNotSuccess = errors.New("http response code was not success")

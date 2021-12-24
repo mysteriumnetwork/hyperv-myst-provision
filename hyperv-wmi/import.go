@@ -2,6 +2,7 @@ package hyperv_wmi
 
 import (
 	"fmt"
+	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -36,8 +37,13 @@ func (m *Manager) ImportVM(opt ImportOptions) error {
 		return errors.Wrap(err, "GetVM")
 	}
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
-		vhdFilePath := opt.WorkDir + `\alpine-vm-disk.vhdx`
-		err := m.CreateVM(vhdFilePath)
+
+		vhdFilePath, err := provisioner.DownloadRelease()
+		if err != nil {
+			return err
+		}
+
+		err = m.CreateVM(vhdFilePath)
 		if err != nil {
 			return errors.Wrap(err, "CreateVM")
 		}

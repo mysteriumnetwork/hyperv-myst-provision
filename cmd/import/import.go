@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"flag"
+	"log"
+	"os"
+
 	"github.com/itzg/go-flagsfiller"
 	"github.com/mysteriumnetwork/hyperv-node/common"
 	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
-	"log"
 )
 
 type flagsSet struct {
@@ -42,6 +44,7 @@ func flagsParse() {
 
 func main() {
 	flagsParse()
+	os.Chdir(flags.WorkDir)
 
 	mgr, err := hyperv_wmi2.NewVMManager(flags.VMName)
 	if err != nil {

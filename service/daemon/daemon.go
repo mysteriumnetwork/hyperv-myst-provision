@@ -21,8 +21,8 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/mysteriumnetwork/hyperv-node/daemon/transport"
 	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"io"
 	"strings"
 
@@ -40,8 +40,8 @@ func New(manager *hyperv_wmi2.Manager) Daemon {
 }
 
 // Start supervisor daemon. Blocks.
-func (d *Daemon) Start(options transport.Options) error {
-	return transport.Start(d.dialog, options)
+func (d *Daemon) Start(options transport2.Options) error {
+	return transport2.Start(d.dialog, options)
 }
 
 // dialog talks to the client via established connection.
