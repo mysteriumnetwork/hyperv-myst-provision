@@ -41,16 +41,21 @@ func (r *responder) ok_(data map[string]string) {
 	r.message(string(b))
 }
 
+func (r *responder) resp_(err error, inProgress bool) {
+	m := map[string]interface{}{"resp": "error", "error": err, "in_progress": inProgress}
+	b, _ := json.Marshal(m)
+	r.message(string(b))
+}
+
 func (r *responder) err_(err error) {
 	m := map[string]interface{}{"resp": "error", "error": err.Error()}
 	b, _ := json.Marshal(m)
-
 	r.message(string(b))
 }
+
 func (r *responder) pong_() {
 	m := map[string]interface{}{"resp": "pong"}
 	b, _ := json.Marshal(m)
-
 	r.message(string(b))
 }
 

@@ -6,6 +6,7 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/flags"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
+	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
@@ -13,7 +14,10 @@ import (
 
 func main() {
 	flags.Parse()
-	mgr, _ := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+	mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
+	}
 
 	if *flags.FlagInstall {
 		path, err := thisPath()
@@ -30,6 +34,12 @@ func main() {
 		log.Info().Msg("Supervisor installed")
 	} else {
 		supervisor := daemon.New(mgr)
+		workDir, err := winutil.AppDataDir()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error getting AppDataDir: " + err.Error())
+		}
+		os.Chdir(workDir)
+
 		if err := supervisor.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
 			log.Fatal().Err(err).Msg("Error running supervisor")
 		}

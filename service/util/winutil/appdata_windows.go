@@ -26,12 +26,11 @@ import (
 )
 
 func AppDataDir() (string, error) {
-	// Default: C:\ProgramData\MystSupervisor
 	root, err := windows.KnownFolderPath(windows.FOLDERID_ProgramData, windows.KF_FLAG_CREATE)
 	if err != nil {
 		return "", fmt.Errorf("could not get known local app data folder: %w", err)
 	}
-	c := filepath.Join(root, "MystSupervisor")
+	c := filepath.Join(root, "MystVmHelper")
 	err = os.MkdirAll(c, os.ModeDir|0700)
 	if err != nil {
 		return "", fmt.Errorf("could not create appdata directory: %w", err)

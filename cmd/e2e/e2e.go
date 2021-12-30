@@ -20,11 +20,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Microsoft/go-winio"
 	"net"
-)
 
-const sock = `\\.\pipe\myst-vm-helper-pipe`
+	"github.com/Microsoft/go-winio"
+
+	consts "github.com/mysteriumnetwork/hyperv-node/const"
+)
 
 func sendCommand(conn net.Conn, m map[string]string) {
 	b, _ := json.Marshal(m)
@@ -33,12 +34,13 @@ func sendCommand(conn net.Conn, m map[string]string) {
 	conn.Write([]byte("\n"))
 
 	out := make([]byte, 2000)
-	conn.Read(out)
-	fmt.Println("rcv >", string(out))
+
+	n, _ := conn.Read(out)
+	fmt.Println("rcv >>", string(out[:n-1]))
 }
 
 func main() {
-	conn, err := winio.DialPipe(sock, nil)
+	conn, err := winio.DialPipe(consts.Sock, nil)
 	if err != nil {
 		fmt.Printf("error listening: %v", err)
 		return
@@ -51,7 +53,7 @@ func main() {
 	cmd = map[string]string{
 		"cmd":      "import-vm",
 		"keystore": `C:\Users\user\.mysterium\keystore`,
-		"work-dir": `C:\Users\user\src\work_dir\alpine-vm-disk\`}
+	}
 	sendCommand(conn, cmd)
 
 	cmd = map[string]string{

@@ -23,9 +23,9 @@ import (
 	"github.com/Microsoft/go-winio"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows/svc"
-)
 
-const sock = `\\.\pipe\myst-vm-helper`
+	consts "github.com/mysteriumnetwork/hyperv-node/const"
+)
 
 // Start starts a listener on a unix domain socket.
 // Conversation is handled by the handlerFunc.
@@ -48,7 +48,7 @@ func (m *managerService) Execute(args []string, r <-chan svc.ChangeRequest, s ch
 	s <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 	go func() {
 		if err := listenPipe(m.handle); err != nil {
-			log.Err(err).Msgf("Could not listen pipe on %s", sock)
+			log.Err(err).Msgf("Could not listen pipe on %s", consts.Sock)
 		}
 	}()
 
@@ -83,7 +83,7 @@ func listenPipe(handle handlerFunc) error {
 		OutputBufferSize:   65536,
 	}
 
-	l, err := winio.ListenPipe(sock, &c)
+	l, err := winio.ListenPipe(consts.Sock, &c)
 	if err != nil {
 		return fmt.Errorf("error listening: %w", err)
 	}

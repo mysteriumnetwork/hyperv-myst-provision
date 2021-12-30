@@ -21,17 +21,18 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
-	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"io"
 	"strings"
 
+	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/rs/zerolog/log"
 )
 
 // Daemon - vm helper process.
 type Daemon struct {
-	mgr *hyperv_wmi2.Manager
+	mgr              *hyperv_wmi2.Manager
+	importInProgress bool
 }
 
 // New creates a new daemon.
@@ -47,6 +48,7 @@ func (d *Daemon) Start(options transport2.Options) error {
 // dialog talks to the client via established connection.
 func (d *Daemon) dialog(conn io.ReadWriter) {
 	scan := bufio.NewScanner(conn)
+
 	answer := responder{conn}
 	for scan.Scan() {
 		line := scan.Bytes()
@@ -83,18 +85,24 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			}
 
 		case commandImportVM:
-			err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
-				Force:                true,
-				WorkDir:              m["work-dir"],
-				VMBootPollSeconds:    5,
-				VMBootTimeoutMinutes: 5,
-				KeystoreDir:          "",
-			})
-			if err != nil {
-				log.Err(err).Msgf("%s failed", commandImportVM)
-				answer.err_(err)
+			if d.importInProgress {
+				// prevent parallel runs of import-vm
+				answer.resp_(nil, d.importInProgress)
 			} else {
-				answer.ok_(nil)
+				d.importInProgress = true
+				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
+					Force:                true,
+					VMBootPollSeconds:    5,
+					VMBootTimeoutMinutes: 5,
+					KeystoreDir:          "",
+				})
+				if err != nil {
+					log.Err(err).Msgf("%s failed", commandImportVM)
+					answer.err_(err)
+				} else {
+					answer.ok_(nil)
+				}
+				d.importInProgress = false
 			}
 
 		case commandGetKvp:

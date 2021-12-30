@@ -14,7 +14,6 @@ import (
 
 type ImportOptions struct {
 	Force                bool
-	WorkDir              string
 	VMBootPollSeconds    int64
 	VMBootTimeoutMinutes int64
 	KeystoreDir          string
