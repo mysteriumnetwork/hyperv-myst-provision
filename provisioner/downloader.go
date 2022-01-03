@@ -5,6 +5,7 @@ import (
 	"github.com/artdarek/go-unzip/pkg/unzip"
 	"github.com/mysteriumnetwork/myst-launcher/utils"
 	"log"
+	"os"
 )
 
 func DownloadRelease() (string, error) {
@@ -12,6 +13,7 @@ func DownloadRelease() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	assetName, assetUrl := "", ""
 	for _, a := range releases[0].Assets {
 		if a.Name == "alpine-vm-disk.zip" {
@@ -19,10 +21,7 @@ func DownloadRelease() (string, error) {
 			break
 		}
 	}
-	//dir, err := os.Getwd()
-	//if err != nil {
-	//	return "", err
-	//}
+
 	err = utils.DownloadFile(assetName, assetUrl, func(progress int) {
 		if progress%10 == 0 {
 			log.Println(fmt.Sprintf("%s - %d%%", assetName, progress))
@@ -37,6 +36,7 @@ func DownloadRelease() (string, error) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(files)
-	return `.\unzip\` + files[0], nil
+
+	wd, _ := os.Getwd()
+	return wd + `.\unzip\` + files[0], nil
 }

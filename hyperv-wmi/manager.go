@@ -456,10 +456,9 @@ func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
 		case <-time.After(pollEvery):
 			err := m.GetGuestKVP()
 			if err != nil {
-				fmt.Printf("unexpected error while waiting for VM `%s` to boot, %s\n", m.vmName, err)
-				return err
+				return errors.Wrap(err, "GetGuestKVP")
 			}
-			fmt.Println(m.Kvp)
+			fmt.Println("GuestKVP>", m.Kvp)
 			ip := m.Kvp["NetworkAddressIPv4"]
 			if ip != "" {
 				fmt.Println("VM IP:", ip)
