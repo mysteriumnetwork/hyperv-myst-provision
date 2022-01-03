@@ -30,31 +30,60 @@ type responder struct {
 	io.Writer
 }
 
-type response struct {
-	State string `json:"state"`
+type Result struct {
+	Cmd  string      `json:"cmd,omitempty"`
+	Resp string      `json:"resp,omitempty"`
+	Err  string      `json:"err,omitempty"`
+	Data interface{} `json:"data,omitempty"`
+}
+
+type ProgressResult struct {
+	Cmd  string      `json:"cmd,omitempty"`
+	Resp string      `json:"resp,omitempty"`
+	Err  string      `json:"err,omitempty"`
+	Data interface{} `json:"data,omitempty"`
+
+	Progress int `json:"progress"`
 }
 
 func (r *responder) ok_(data map[string]string) {
-	m := map[string]interface{}{"resp": "ok", "data": data}
-	b, _ := json.Marshal(m)
-
-	r.message(string(b))
-}
-
-func (r *responder) resp_(err error, inProgress bool) {
-	m := map[string]interface{}{"resp": "error", "error": err, "in_progress": inProgress}
+	m := Result{
+		Resp: "ok",
+		Data: data,
+	}
 	b, _ := json.Marshal(m)
 	r.message(string(b))
 }
+
+func (r *responder) progress_(cmd string, progress int) {
+	m := ProgressResult{
+		Resp:     "progress",
+		Cmd:      cmd,
+		Progress: progress,
+	}
+	b, _ := json.Marshal(m)
+	r.message(string(b))
+}
+
+//func (r *responder) resp_(err string) {
+//	m := map[string]interface{}{"resp": "error", "error": err}
+//	b, _ := json.Marshal(m)
+//	r.message(string(b))
+//}
 
 func (r *responder) err_(err error) {
-	m := map[string]interface{}{"resp": "error", "error": err.Error()}
+	m := Result{
+		Resp: "error",
+		Err:  err.Error(),
+	}
 	b, _ := json.Marshal(m)
 	r.message(string(b))
 }
 
 func (r *responder) pong_() {
-	m := map[string]interface{}{"resp": "pong"}
+	m := Result{
+		Resp: "pong",
+	}
 	b, _ := json.Marshal(m)
 	r.message(string(b))
 }

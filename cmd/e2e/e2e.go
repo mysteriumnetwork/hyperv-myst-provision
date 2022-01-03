@@ -27,7 +27,7 @@ import (
 	consts "github.com/mysteriumnetwork/hyperv-node/const"
 )
 
-func sendCommand(conn net.Conn, m map[string]string) {
+func sendCommand(conn net.Conn, m map[string]interface{}) {
 	b, _ := json.Marshal(m)
 	fmt.Println("send > " + string(b))
 	conn.Write(b)
@@ -35,8 +35,24 @@ func sendCommand(conn net.Conn, m map[string]string) {
 
 	out := make([]byte, 2000)
 
-	n, _ := conn.Read(out)
-	fmt.Println("rcv >>", string(out[:n-1]))
+	// wait for final response
+	for {
+		n, _ := conn.Read(out)
+		if n > 0 {
+			var res map[string]interface{}
+			payload := out[:n-1]
+			fmt.Println("rcv >>", string(payload))
+
+			json.Unmarshal(payload, &res)
+			if res["resp"] == "error" || res["resp"] == "ok" || res["resp"] == "pong" {
+				break
+			}
+			if res["resp"] == "progress" {
+				fmt.Println("Progress >", res["progress"])
+			}
+		}
+	}
+
 }
 
 func main() {
@@ -47,16 +63,17 @@ func main() {
 	}
 	defer conn.Close()
 
-	cmd := map[string]string{"cmd": "ping"}
+	cmd := map[string]interface{}{"cmd": "ping"}
 	sendCommand(conn, cmd)
 
-	cmd = map[string]string{
-		"cmd":      "import-vm",
-		"keystore": `C:\Users\user\.mysterium\keystore`,
+	cmd = map[string]interface{}{
+		"cmd":             "import-vm",
+		"keystore":        `C:\Users\user\.mysterium\keystore`,
+		"report-progress": true,
 	}
 	sendCommand(conn, cmd)
 
-	cmd = map[string]string{
+	cmd = map[string]interface{}{
 		"cmd": "get-kvp",
 	}
 	sendCommand(conn, cmd)

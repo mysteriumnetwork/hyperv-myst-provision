@@ -19,7 +19,7 @@ type ImportOptions struct {
 	KeystoreDir          string
 }
 
-func (m *Manager) ImportVM(opt ImportOptions) error {
+func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
 	fmt.Println("ImportVM", opt)
 
 	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
@@ -37,7 +37,7 @@ func (m *Manager) ImportVM(opt ImportOptions) error {
 	}
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
 
-		vhdFilePath, err := provisioner.DownloadRelease()
+		vhdFilePath, err := provisioner.DownloadRelease(pf)
 		if err != nil {
 			return err
 		}

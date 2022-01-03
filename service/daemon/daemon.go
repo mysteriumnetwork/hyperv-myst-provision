@@ -20,6 +20,7 @@ package daemon
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -54,10 +55,10 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 		line := scan.Bytes()
 		log.Debug().Msgf("> %s", line)
 
-		m := make(map[string]string, 0)
+		m := make(map[string]interface{}, 0)
 		err := json.Unmarshal([]byte(line), &m)
 		fmt.Println(m, err)
-		op := strings.ToLower(m["cmd"])
+		op := strings.ToLower(m["cmd"].(string))
 
 		switch op {
 		case commandVersion:
@@ -85,9 +86,11 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			}
 
 		case commandImportVM:
+			reportProgress, _ := m["report-progress"].(bool)
+
 			if d.importInProgress {
 				// prevent parallel runs of import-vm
-				answer.resp_(nil, d.importInProgress)
+				answer.err_(errors.New("in progress"))
 			} else {
 				d.importInProgress = true
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
@@ -95,6 +98,11 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					VMBootPollSeconds:    5,
 					VMBootTimeoutMinutes: 5,
 					KeystoreDir:          "",
+				}, func(progress int) {
+					if reportProgress {
+						answer.progress_(commandImportVM, progress)
+						//fmt.Println("Progress >>>", progress)
+					}
 				})
 				if err != nil {
 					log.Err(err).Msgf("%s failed", commandImportVM)

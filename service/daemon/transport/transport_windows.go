@@ -98,7 +98,7 @@ func listenPipe(handle handlerFunc) error {
 		if err != nil {
 			return fmt.Errorf("accept error: %w", err)
 		}
-		fmt.Println(">>>")
+
 		go func() {
 			peer := conn.RemoteAddr().Network()
 			log.Debug().Msgf("Client connected: %s", peer)
