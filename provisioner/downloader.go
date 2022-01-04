@@ -10,35 +10,48 @@ import (
 
 type ProgressFunc func(progress int)
 
-func DownloadRelease(pf ProgressFunc) (string, error) {
-	releases, err := gitReleases("mysteriumnetwork", "hyperv-myst-provision", 1)
-	if err != nil {
-		return "", err
-	}
+const (
+	assetAlpineImg = "alpine-vm-disk.zip"
+)
 
-	assetName, assetUrl := "", ""
-	for _, a := range releases[0].Assets {
-		if a.Name == "alpine-vm-disk.zip" {
-			assetName, assetUrl = a.Name, a.BrowserDownloadUrl
-			break
-		}
-	}
+type DownloadOptions struct {
+	Force bool
+}
 
-	err = utils.DownloadFile(assetName, assetUrl, func(progress int) {
-		if pf != nil {
-			pf(progress)
+func DownloadRelease(opt DownloadOptions, pf ProgressFunc) (string, error) {
+	_, err := os.Stat(assetAlpineImg)
+	useExisting := err == nil && !opt.Force
+
+	if !useExisting {
+		releases, err := gitReleases("mysteriumnetwork", "hyperv-myst-provision", 1)
+		if err != nil {
+			return "", err
 		}
 
-		if progress%10 == 0 {
-			log.Println(fmt.Sprintf("%s - %d%%", assetName, progress))
+		assetName, assetUrl := "", ""
+		for _, a := range releases[0].Assets {
+			if a.Name == assetAlpineImg {
+				assetName, assetUrl = a.Name, a.BrowserDownloadUrl
+				break
+			}
 		}
-	})
-	if err != nil {
-		return "", err
+
+		err = utils.DownloadFile(assetName, assetUrl, func(progress int) {
+			if pf != nil {
+				pf(progress)
+			}
+
+			if progress%10 == 0 {
+				log.Println(fmt.Sprintf("%s - %d%%", assetName, progress))
+			}
+		})
+		if err != nil {
+			return "", err
+		}
 	}
 
 	uz := unzip.New()
-	files, err := uz.Extract(assetName, `.\vhdx`)
+	files, err := uz.Extract(assetAlpineImg, `.\vhdx`)
 	if err != nil {
 		fmt.Println(err)
 	}

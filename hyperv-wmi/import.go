@@ -37,7 +37,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 	}
 	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
 
-		vhdFilePath, err := provisioner.DownloadRelease(pf)
+		vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)
 		if err != nil {
 			return err
 		}

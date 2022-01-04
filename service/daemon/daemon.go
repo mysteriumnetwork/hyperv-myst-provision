@@ -106,7 +106,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				}
 				d.importInProgress = true
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
-					Force:                true,
+					Force:                false,
 					VMBootPollSeconds:    5,
 					VMBootTimeoutMinutes: 5,
 					KeystoreDir:          "",

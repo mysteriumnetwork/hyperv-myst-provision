@@ -30,7 +30,7 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-const serviceName = "Mysterium VM helper service"
+const serviceName = "MysteriumVMSvc"
 
 // Install installs service for Windows. If there is previous service instance
 // running it will be first uninstalled before installing new version.
@@ -58,8 +58,8 @@ func Install(options Options) error {
 		ServiceType:  windows.SERVICE_WIN32_OWN_PROCESS,
 		StartType:    mgr.StartAutomatic,
 		ErrorControl: mgr.ErrorNormal,
-		DisplayName:  "MysteriumVPN Supervisor",
-		Description:  "Handles network configuration for MysteriumVPN application.",
+		DisplayName:  "Mysterium VM Helper",
+		Description:  "Handles VM for MysteriumVPN application.",
 		Dependencies: []string{"Nsi"},
 	}
 	if err := installAndStartService(m, serviceName, options, config); err != nil {

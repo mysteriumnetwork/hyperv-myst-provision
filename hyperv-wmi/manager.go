@@ -460,7 +460,7 @@ func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
 			}
 			fmt.Println("GuestKVP>", m.Kvp)
 			ip := m.Kvp["NetworkAddressIPv4"]
-			if ip != "" {
+			if ip != nil && ip != "" {
 				fmt.Println("VM IP:", ip)
 				return nil
 			}
