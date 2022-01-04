@@ -38,11 +38,11 @@ func DownloadRelease(pf ProgressFunc) (string, error) {
 	}
 
 	uz := unzip.New()
-	files, err := uz.Extract(assetName, `.\unzip`)
+	files, err := uz.Extract(assetName, `.\vhdx`)
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	wd, _ := os.Getwd()
-	return wd + `.\unzip\` + files[0], nil
+	return wd + `.\vhdx\` + files[0], nil
 }

@@ -26,7 +26,7 @@ type Manager struct {
 	guestFileService *wmi.Result // file copy service
 
 	// guest KV map
-	Kvp map[string]string
+	Kvp map[string]interface{}
 }
 
 // NewVMManager returns a new Manager type

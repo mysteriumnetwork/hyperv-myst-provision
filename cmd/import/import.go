@@ -57,7 +57,7 @@ func main() {
 		VMBootPollSeconds:    flags.VMBootPollSeconds,
 		VMBootTimeoutMinutes: flags.VMBootTimeoutMinutes,
 		KeystoreDir:          flags.KeystoreDir,
-	})
+	}, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -32,7 +32,9 @@ func main() {
 			log.Fatal().Err(err).Msg("Failed to install supervisor")
 		}
 		log.Info().Msg("Supervisor installed")
+
 	} else {
+
 		supervisor := daemon.New(mgr)
 		workDir, err := winutil.AppDataDir()
 		if err != nil {

@@ -46,7 +46,7 @@ type ProgressResult struct {
 	Progress int `json:"progress"`
 }
 
-func (r *responder) ok_(data map[string]string) {
+func (r *responder) ok_(data map[string]interface{}) {
 	m := Result{
 		Resp: "ok",
 		Data: data,

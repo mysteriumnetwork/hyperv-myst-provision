@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mysteriumnetwork/hyperv-node/provisioner"
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	"io"
 	"strings"
 
@@ -34,11 +36,15 @@ import (
 type Daemon struct {
 	mgr              *hyperv_wmi2.Manager
 	importInProgress bool
+	cfg              model.Config
 }
 
 // New creates a new daemon.
 func New(manager *hyperv_wmi2.Manager) Daemon {
-	return Daemon{mgr: manager}
+	d := Daemon{mgr: manager}
+	d.cfg.Read()
+
+	return d
 }
 
 // Start supervisor daemon. Blocks.
@@ -92,18 +98,19 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				// prevent parallel runs of import-vm
 				answer.err_(errors.New("in progress"))
 			} else {
+				var fn provisioner.ProgressFunc
+				if reportProgress {
+					fn = func(progress int) {
+						answer.progress_(commandImportVM, progress)
+					}
+				}
 				d.importInProgress = true
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
 					Force:                true,
 					VMBootPollSeconds:    5,
 					VMBootTimeoutMinutes: 5,
 					KeystoreDir:          "",
-				}, func(progress int) {
-					if reportProgress {
-						answer.progress_(commandImportVM, progress)
-						//fmt.Println("Progress >>>", progress)
-					}
-				})
+				}, fn)
 				if err != nil {
 					log.Err(err).Msgf("%s failed", commandImportVM)
 					answer.err_(err)
@@ -113,14 +120,19 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				d.importInProgress = false
 			}
 
+		case commandGetVMState:
+			var m map[string]interface{}
+			m["enabled"] = d.cfg.Enabled
+			answer.ok_(m)
+
 		case commandGetKvp:
-			//err = d.mgr.GetGuestKVP()
-			//if err != nil {
-			//	log.Err(err).Msgf("%s failed", commandImportVM)
-			//	answer.err_(err)
-			//} else {
-			answer.ok_(d.mgr.Kvp)
-			//}
+			err = d.mgr.GetGuestKVP()
+			if err != nil {
+				log.Err(err).Msgf("%s failed", commandGetKvp)
+				answer.err_(err)
+			} else {
+				answer.ok_(d.mgr.Kvp)
+			}
 
 		}
 	}

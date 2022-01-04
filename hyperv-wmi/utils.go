@@ -32,8 +32,10 @@ type KVXml struct {
 	} `xml:"PROPERTY"`
 }
 
-func decodeXMLArray(txt []interface{}) map[string]string {
-	dict := make(map[string]string, 0)
+type KVMap map[string]interface{}
+
+func decodeXMLArray(txt []interface{}) KVMap {
+	dict := make(KVMap, 0)
 
 	for _, rec := range txt {
 		r := strings.NewReader(rec.(string))

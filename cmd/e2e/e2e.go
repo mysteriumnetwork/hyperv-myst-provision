@@ -41,14 +41,14 @@ func sendCommand(conn net.Conn, m map[string]interface{}) {
 		if n > 0 {
 			var res map[string]interface{}
 			payload := out[:n-1]
-			fmt.Println("rcv >>", string(payload))
+			fmt.Println("rcv <", string(payload))
 
 			json.Unmarshal(payload, &res)
 			if res["resp"] == "error" || res["resp"] == "ok" || res["resp"] == "pong" {
 				break
 			}
 			if res["resp"] == "progress" {
-				fmt.Println("Progress >", res["progress"])
+				//fmt.Println("Progress >", res["progress"])
 			}
 		}
 	}
