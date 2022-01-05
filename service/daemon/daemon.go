@@ -22,14 +22,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mysteriumnetwork/hyperv-node/provisioner"
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	"io"
 	"strings"
 
-	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
-	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/rs/zerolog/log"
+
+	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/provisioner"
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
+	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 )
 
 // Daemon - vm helper process.
@@ -49,13 +50,16 @@ func New(manager *hyperv_wmi2.Manager) Daemon {
 
 // Start supervisor daemon. Blocks.
 func (d *Daemon) Start(options transport2.Options) error {
+	if d.cfg.Enabled {
+		d.mgr.StartVM()
+	}
+
 	return transport2.Start(d.dialog, options)
 }
 
 // dialog talks to the client via established connection.
 func (d *Daemon) dialog(conn io.ReadWriter) {
 	scan := bufio.NewScanner(conn)
-
 	answer := responder{conn}
 	for scan.Scan() {
 		line := scan.Bytes()

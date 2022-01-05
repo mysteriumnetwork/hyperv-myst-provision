@@ -9,7 +9,6 @@ package model
 
 import (
 	"encoding/json"
-	"github.com/mysteriumnetwork/myst-launcher/utils"
 	"log"
 	"os"
 )
@@ -23,7 +22,7 @@ func (c *Config) getDefaultValues() {
 }
 
 func (c *Config) getFilePath() string {
-	return utils.GetUserProfileDir() + `\myst_vm_helper.conf`
+	return `.\myst_vm_helper.conf`
 }
 
 func (c *Config) Read() {
