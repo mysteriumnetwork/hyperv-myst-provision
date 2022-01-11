@@ -17,7 +17,7 @@ jobs:
 
       - name: Build
         run: |
-          go build -v -trimpath -ldflags "-s -w" -o  bin/myst-vm-helper.exe github.com/mysteriumnetwork/hyperv-myst-provision/cmd/svc
+          go build -v -trimpath -ldflags "-s -w" -o  bin/myst-vm-helper.exe github.com/mysteriumnetwork/hyperv-node/cmd/svc
         env:
           GOARCH: amd64
           GOOS: windows

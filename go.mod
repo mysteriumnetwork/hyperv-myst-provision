@@ -1,4 +1,4 @@
-module github.com/mysteriumnetwork/hyperv-myst-provision
+module github.com/mysteriumnetwork/hyperv-node
 
 go 1.16
 
