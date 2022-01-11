@@ -17,7 +17,7 @@ type flagsSet struct {
 	KeystoreDir          string `usage:"path to keystore folder (C:\Users\<user>\.mysterium\keystore"`
 	Force                bool   `default:"false" usage:"will remove any existing VM with same name"`
 	VMBootPollSeconds    int64  `default:"5" usage:"poll interval (seconds) to check whether guest VM has booted"`
-	VMBootTimeoutMinutes int64  `default:"5" usage:"timeout period (minutes) in case no successful response from guest VM"`
+	VMBootTimeoutMinutes int64  `default:"1" usage:"timeout period (minutes) in case no successful response from guest VM"`
 }
 
 func (fs *flagsSet) validate() error {
@@ -50,13 +50,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	os.Chdir(flags.WorkDir)
-
 	err = mgr.ImportVM(hyperv_wmi2.ImportOptions{
 		Force:                flags.Force,
 		VMBootPollSeconds:    flags.VMBootPollSeconds,
 		VMBootTimeoutMinutes: flags.VMBootTimeoutMinutes,
 		KeystoreDir:          flags.KeystoreDir,
+		PreferEthernet:       true,
 	}, nil)
 	if err != nil {
 		log.Fatal(err)

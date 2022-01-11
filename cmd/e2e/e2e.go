@@ -18,44 +18,25 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net"
 
-	"github.com/Microsoft/go-winio"
+	"golang.org/x/sys/windows"
 
 	consts "github.com/mysteriumnetwork/hyperv-node/const"
+	hyperv_wmi "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
+
+	"github.com/Microsoft/go-winio"
 )
 
-func sendCommand(conn net.Conn, m map[string]interface{}) {
-	b, _ := json.Marshal(m)
-	fmt.Println("send > " + string(b))
-	conn.Write(b)
-	conn.Write([]byte("\n"))
-
-	out := make([]byte, 2000)
-
-	// wait for final response
-	for {
-		n, _ := conn.Read(out)
-		if n > 0 {
-			var res map[string]interface{}
-			payload := out[:n-1]
-			fmt.Println("rcv <", string(payload))
-
-			json.Unmarshal(payload, &res)
-			if res["resp"] == "error" || res["resp"] == "ok" || res["resp"] == "pong" {
-				break
-			}
-			if res["resp"] == "progress" {
-				//fmt.Println("Progress >", res["progress"])
-			}
-		}
-	}
-
-}
-
 func main() {
+	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
+	if err != nil {
+		fmt.Printf("error getting profile path: %v", err)
+		return
+	}
+	keystorePath := homeDir + `\.mysterium\keystore`
+
 	conn, err := winio.DialPipe(consts.Sock, nil)
 	if err != nil {
 		fmt.Printf("error listening: %v", err)
@@ -63,18 +44,23 @@ func main() {
 	}
 	defer conn.Close()
 
-	cmd := map[string]interface{}{"cmd": "ping"}
-	sendCommand(conn, cmd)
+	cmd := hyperv_wmi.KVMap{"cmd": "ping"}
+	client.SendCommand(conn, cmd)
 
-	cmd = map[string]interface{}{
+	cmd = hyperv_wmi.KVMap{
 		"cmd":             "import-vm",
-		"keystore":        `C:\Users\user\.mysterium\keystore`,
+		"keystore":        keystorePath,
 		"report-progress": true,
 	}
-	sendCommand(conn, cmd)
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		fmt.Println("error:", res["err"])
+		return
+	}
 
-	cmd = map[string]interface{}{
+	cmd = hyperv_wmi.KVMap{
 		"cmd": "get-kvp",
 	}
-	sendCommand(conn, cmd)
+	kv := client.SendCommand(conn, cmd)
+	fmt.Println("KV", kv)
 }

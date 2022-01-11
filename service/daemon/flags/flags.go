@@ -25,9 +25,11 @@ import (
 
 // Supervisor CLI flags.
 var (
-	FlagVersion     = flag.Bool("version", false, "Print version")
-	FlagInstall     = flag.Bool("install", false, "Install or repair supervisor")
-	FlagUninstall   = flag.Bool("uninstall", false, "Uninstall myst supervisor")
+	FlagVersion   = flag.Bool("version", false, "Print version")
+	FlagInstall   = flag.Bool("install", false, "Install or repair VM helper")
+	FlagUninstall = flag.Bool("uninstall", false, "Uninstall myst VM helper")
+	FlagImportVM  = flag.Bool("import", false, "Import myst VM")
+
 	FlagLogFilePath = flag.String("log-path", "", "Supervisor log file path")
 	FlagLogLevel    = flag.String("log-level", zerolog.InfoLevel.String(), "Logging level")
 	FlagWinService  = flag.Bool("winservice", false, "Run via service manager instead of standalone (windows only).")

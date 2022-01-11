@@ -2,14 +2,16 @@ package hyperv_wmi
 
 import (
 	"fmt"
-	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/pkg/errors"
+
+	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 )
 
 type ImportOptions struct {
@@ -17,12 +19,13 @@ type ImportOptions struct {
 	VMBootPollSeconds    int64
 	VMBootTimeoutMinutes int64
 	KeystoreDir          string
+	PreferEthernet       bool
 }
 
 func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
 	fmt.Println("ImportVM", opt)
 
-	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(); err != nil {
+	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(opt.PreferEthernet); err != nil {
 		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
 	}
 
@@ -76,12 +79,11 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		}
 		keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
 	}
-	fmt.Println("keystorePath >", keystorePath)
+	log.Println("keystorePath >", keystorePath)
 	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
 		if info.IsDir() {
 			return nil
 		}
-
 		return m.CopyFile(path, "/root/.mysterium/keystore/")
 	})
 	if err != nil {

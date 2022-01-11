@@ -2,18 +2,20 @@ package hyperv_wmi
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/gabriel-samfira/go-wmi/virt/network"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
-	"sort"
 )
 
 const (
-	switchName = "Myst Bridge Switch"
+	defaultSwitchName = "Myst Bridge Switch"
+	//defaultSwitchName = "Default Switch"
 )
 
-func (m *Manager) GetSwitch() (*wmi.Result, error) {
+func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "ElementName", Value: switchName, Type: wmi.Equals}},
 	}
@@ -77,9 +79,9 @@ func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.R
 	return eep, err
 }
 
-func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
+func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet bool) error {
 	// check if the switch exists
-	_, err := m.GetSwitch()
+	_, err := m.GetSwitch(defaultSwitchName)
 	if err == nil {
 		return nil
 	}
@@ -96,14 +98,14 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "SpawnInstance_")
 	}
-	swInstance.Set("ElementName", switchName)
+	swInstance.Set("ElementName", defaultSwitchName)
 	swInstance.Set("Notes", []string{"vSwitch for mysterium node"})
 	switchText, err := swInstance.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")
 	}
 
-	eep, err := m.FindDefaultNetworkAdapter(true)
+	eep, err := m.FindDefaultNetworkAdapter(preferEthernet)
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
@@ -118,7 +120,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	if err != nil {
 		return errors.Wrap(err, "getDefaultClassValue")
 	}
-	extPortData.Set("ElementName", switchName+" external port")
+	extPortData.Set("ElementName", defaultSwitchName+" external port")
 	extPortData.Set("HostResource", []string{eepPath})
 	extPortDataStr, err := extPortData.GetText(1)
 	if err != nil {
@@ -140,7 +142,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign() error {
 	}
 	intPortData.Set("HostResource", []string{hostPath})
 	intPortData.Set("Address", mac.Value())
-	intPortData.Set("ElementName", switchName)
+	intPortData.Set("ElementName", defaultSwitchName)
 	intPortDataStr, err := intPortData.GetText(1)
 	if err != nil {
 		return errors.Wrap(err, "GetText")

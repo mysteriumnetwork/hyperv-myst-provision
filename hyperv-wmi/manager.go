@@ -2,6 +2,7 @@ package hyperv_wmi
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/gabriel-samfira/go-wmi/utils"
@@ -259,7 +260,7 @@ func (m *Manager) CreateVM(vhdFilePath string) error {
 	fmt.Println("networkURI", networkURI)
 
 	// connect adapter to switch
-	sw, _ := m.GetVirtSwitchByName(switchName)
+	sw, _ := m.GetVirtSwitchByName(defaultSwitchName)
 	swPath, _ := sw.Path()
 
 	portAllocRes, err := m.getDefaultClassValue(vm.EthernetPortAllocationSettingDataClass, "")
@@ -450,7 +451,9 @@ func (m *Manager) CopyFile(src, dst string) error {
 }
 
 func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
-	fmt.Printf("waiting for VM `%s` to boot\n", m.vmName)
+	log.Printf("waiting for VM `%s` to boot\n", m.vmName)
+	deadline := time.Now().Add(timeout)
+
 	for {
 		select {
 		case <-time.After(pollEvery):
@@ -458,16 +461,17 @@ func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
 			if err != nil {
 				return errors.Wrap(err, "GetGuestKVP")
 			}
-			fmt.Println("GuestKVP>", m.Kvp)
+			log.Println("GuestKVP>", m.Kvp)
 			ip := m.Kvp["NetworkAddressIPv4"]
 			if ip != nil && ip != "" {
-				fmt.Println("VM IP:", ip)
+				log.Println("VM IP:", ip)
 				return nil
 			}
 
-		case <-time.After(timeout):
-			fmt.Printf("time out while waiting for VM `%s` to boot\n", m.vmName)
-			return errors.New("Timeout")
+			if time.Now().After(deadline) {
+				log.Printf("time out while waiting for VM `%s` to boot\n", m.vmName)
+				return errors.New("Timeout")
+			}
 		}
 	}
 }

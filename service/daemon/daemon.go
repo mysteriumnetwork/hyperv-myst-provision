@@ -97,6 +97,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 
 		case commandImportVM:
 			reportProgress, _ := m["report-progress"].(bool)
+			preferEthernet, _ := m["prefer-ethernet"].(bool)
 
 			if d.importInProgress {
 				// prevent parallel runs of import-vm
@@ -110,10 +111,11 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				}
 				d.importInProgress = true
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
-					Force:                false,
+					Force:                true, //false,
 					VMBootPollSeconds:    5,
-					VMBootTimeoutMinutes: 5,
+					VMBootTimeoutMinutes: 1,
 					KeystoreDir:          "",
+					PreferEthernet:       preferEthernet,
 				}, fn)
 				if err != nil {
 					log.Err(err).Msgf("%s failed", commandImportVM)
