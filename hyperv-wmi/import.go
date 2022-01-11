@@ -23,7 +23,7 @@ type ImportOptions struct {
 }
 
 func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
-	fmt.Println("ImportVM", opt)
+	log.Println("ImportVM", opt)
 
 	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(opt.PreferEthernet); err != nil {
 		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
