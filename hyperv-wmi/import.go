@@ -69,10 +69,8 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "WaitUntilBooted")
 	}
 
-	var keystorePath string
-	if opt.KeystoreDir != "" {
-		keystorePath = opt.KeystoreDir
-	} else {
+	keystorePath := opt.KeystoreDir
+	if opt.KeystoreDir == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return errors.Wrap(err, "UserHomeDir")

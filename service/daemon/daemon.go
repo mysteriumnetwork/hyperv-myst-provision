@@ -98,6 +98,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 		case commandImportVM:
 			reportProgress, _ := m["report-progress"].(bool)
 			preferEthernet, _ := m["prefer-ethernet"].(bool)
+			keystoreDir, _ := m["keystore"].(string)
 
 			if d.importInProgress {
 				// prevent parallel runs of import-vm
@@ -114,7 +115,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					Force:                true, //false,
 					VMBootPollSeconds:    5,
 					VMBootTimeoutMinutes: 1,
-					KeystoreDir:          "",
+					KeystoreDir:          keystoreDir,
 					PreferEthernet:       preferEthernet,
 				}, fn)
 				if err != nil {

@@ -17,10 +17,12 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
 	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
+	"github.com/mysteriumnetwork/hyperv-node/service/util"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 )
 
 func main() {
+	util.PanicHandler("main")
 	flags.Parse()
 
 	logOpts := logconfig.LogOptions{
