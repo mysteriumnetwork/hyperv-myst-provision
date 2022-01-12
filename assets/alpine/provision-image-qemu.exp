@@ -97,7 +97,7 @@ send "/tmp/1.sh $node_version\n"
 expect "*#"
 
 put "assets/alpine/myst-service"
-send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/init.d/; rc-update add myst-service default\n"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/init.d/myst-service; rc-update add myst-service default\n"
 expect "*#"
 
 poweroff

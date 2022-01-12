@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	defaultSwitchName = "Myst Bridge Switch"
-	//defaultSwitchName = "Default Switch"
+	//defaultSwitchName = "Myst Bridge Switch"
+	defaultSwitchName = "Default Switch"
 )
 
 func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
