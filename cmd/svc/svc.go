@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Microsoft/go-winio"
 	"github.com/rs/zerolog/log"
@@ -107,6 +108,19 @@ func main() {
 		}
 		kv := client.SendCommand(conn, cmd)
 		log.Info().Msgf("KV: %v", kv)
+
+		data := hyperv_wmi.NewKVMap(kv["data"])
+		if data != nil {
+			ip, ok := data["NetworkAddressIPv4"].(string)
+			if ok && ip != "" {
+				log.Print("Web UI is at http://" + ip + ":4449")
+				fmt.Println("Web UI is at http://" + ip + ":4449")
+
+				time.Sleep(7 * time.Second)
+				util.OpenUrlInBrowser("http://" + ip + ":4449")
+				return
+			}
+		}
 
 	} else {
 		// Start service

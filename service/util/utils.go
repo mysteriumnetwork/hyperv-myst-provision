@@ -8,16 +8,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 	"github.com/mysteriumnetwork/myst-launcher/native"
 )
 
 func PanicHandler(threadName string) {
 	if err := recover(); err != nil {
-		d, _ := winutil.AppDataDir()
 
+		dir, _ := os.Getwd()
 		fmt.Printf("Stacktrace %s: %s\n", threadName, debug.Stack())
-		fname := fmt.Sprintf("%s/launcher_trace_%d.txt", d, time.Now().Unix())
+		fname := fmt.Sprintf("%s/launcher_trace_%d.txt", dir, time.Now().Second())
 		f, err := os.Create(fname)
 		if err != nil {
 			fmt.Println(err)
@@ -30,7 +29,6 @@ func PanicHandler(threadName string) {
 		bu.WriteString(fmt.Sprintf("Stacktrace %s: \n", threadName))
 		bu.Write(debug.Stack())
 		f.Write(bu.Bytes())
-
 	}
 }
 

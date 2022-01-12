@@ -3,11 +3,12 @@ package hyperv_wmi
 import (
 	"encoding/xml"
 	"fmt"
+	"strings"
+
 	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
-	"strings"
 )
 
 const (
@@ -33,6 +34,14 @@ type KVXml struct {
 }
 
 type KVMap map[string]interface{}
+
+func NewKVMap(i interface{}) KVMap {
+	m, ok := i.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	return KVMap(m)
+}
 
 func decodeXMLArray(txt []interface{}) KVMap {
 	dict := make(KVMap, 0)

@@ -20,6 +20,7 @@ package install
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -79,6 +80,17 @@ func Uninstall() error {
 	return uninstallService(m, serviceName)
 }
 
+// isErrRegistryKeyExist checks if the error is registry key already
+// exists.
+// https://github.com/golang/sys/blob/30de6d19a3bd89a5f38ae4028e23aaa5582648af/windows/svc/eventlog/install.go#L44
+func isErrRegistryKeyExist(err error) bool {
+	const errMsg = " registry key already exists"
+	if err == nil {
+		return false
+	}
+	return strings.HasSuffix(err.Error(), errMsg)
+}
+
 func installAndStartService(m *mgr.Mgr, name string, options Options, config mgr.Config) error {
 	s, err := m.CreateService(name, options.SupervisorPath, config, "-winservice")
 	if err != nil {
@@ -87,7 +99,7 @@ func installAndStartService(m *mgr.Mgr, name string, options Options, config mgr
 	defer s.Close()
 
 	err = eventlog.InstallAsEventCreate(name, eventlog.Error|eventlog.Warning|eventlog.Info)
-	if err != nil {
+	if err != nil && !isErrRegistryKeyExist(err) {
 		s.Delete()
 		return fmt.Errorf("could not configure event logging: %s", err)
 	}
