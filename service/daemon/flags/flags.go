@@ -28,7 +28,9 @@ var (
 	FlagVersion   = flag.Bool("version", false, "Print version")
 	FlagInstall   = flag.Bool("install", false, "Install or repair VM helper")
 	FlagUninstall = flag.Bool("uninstall", false, "Uninstall myst VM helper")
-	FlagImportVM  = flag.Bool("import", false, "Import myst VM")
+
+	FlagImportVM               = flag.Bool("import", false, "Import myst VM")
+	FlagImportVMPreferEthernet = flag.Bool("prefer-ethernet", false, "Prefer Ethernet connection")
 
 	FlagLogFilePath = flag.String("log-path", "", "Supervisor log file path")
 	FlagLogLevel    = flag.String("log-level", zerolog.InfoLevel.String(), "Logging level")

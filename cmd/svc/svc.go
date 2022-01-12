@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 
 	"github.com/Microsoft/go-winio"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sys/windows"
+
 	consts "github.com/mysteriumnetwork/hyperv-node/const"
 	hyperv_wmi "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon"
@@ -15,8 +18,6 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
 	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sys/windows"
 )
 
 func main() {
@@ -86,10 +87,12 @@ func main() {
 		}
 		defer conn.Close()
 
+		fmt.Println("flags.FlagImportVMPreferEthernet", *flags.FlagImportVMPreferEthernet)
 		cmd := hyperv_wmi.KVMap{
 			"cmd":             "import-vm",
 			"keystore":        keystorePath,
 			"report-progress": true,
+			"prefer-ethernet": *flags.FlagImportVMPreferEthernet,
 		}
 		res := client.SendCommand(conn, cmd)
 		if res["resp"] == "error" {
