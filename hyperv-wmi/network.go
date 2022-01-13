@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	//defaultSwitchName = "Myst Bridge Switch"
-	defaultSwitchName = "Default Switch"
+	defaultSwitchName = "Myst Bridge Switch"
+	//defaultSwitchName = "Default Switch"
 )
 
 func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
@@ -23,6 +23,7 @@ func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 }
 
 // Find a network adapter with minimum metric and use it for virtual network switch
+// prefer active
 func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, error) {
 	adapterConfs := make([]adapter, 0)
 
@@ -48,19 +49,20 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, e
 		fmt.Println("a1>", a)
 	}
 	sort.Sort(metricSorter(adapterConfs))
+	var a *wmi.Result
 	for _, ac := range adapterConfs {
-		a, err := m.findNetworkAdapterByID(ac.id, preferEthernet)
+		a, err = m.findNetworkAdapterByID(ac.id, preferEthernet)
 		if err == nil {
 			return a, nil
 		}
 	}
-	// TODO: fallback to wifi
 
+	// TODO: fallback to wifi
 	return nil, nil
 }
 
 func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.Result, error) {
-	fmt.Println("findNetworkAdapterByID>", preferEthernet)
+	fmt.Println("findNetworkAdapterByID>", id, preferEthernet)
 
 	qParams := []wmi.Query{
 		&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
@@ -72,12 +74,99 @@ func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.R
 		return nil, err
 	}
 
-	if preferEthernet {
+	// skip if no ethernet and use wifi
+	if preferEthernet && !errors.Is(err, wmi.ErrNotFound) {
 		return eep, err
 	}
 	eep, err = m.con.GetOne(WifiPort, []string{}, qParams)
 	return eep, err
 }
+
+func (m *Manager) RemoveSwitch() error {
+	// check if the switch exists
+	sw, err := m.GetSwitch(defaultSwitchName)
+	if errors.Is(err, wmi.ErrNotFound) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+		return errors.Wrap(err, "GetOne")
+	}
+	path, err := sw.Path()
+	if err != nil {
+		return err
+	}
+	fmt.Println("RemoveSwitch>", path)
+
+	jobPath := ole.VARIANT{}
+	jobState, err := m.switchMgr.Get("DestroySystem", path, &jobPath)
+	if err != nil {
+		return errors.Wrap(err, "DestroySystem")
+	}
+	return m.waitForJob(jobState, jobPath)
+}
+
+//func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
+//	// check if the switch exists
+//	_, err := m.GetSwitch(defaultSwitchName)
+//	if err == nil {
+//		return nil
+//	}
+//	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+//		return errors.Wrap(err, "GetOne")
+//	}
+//
+//	eep, err := m.FindDefaultNetworkAdapter(preferEthernet)
+//	if err != nil {
+//		return errors.Wrap(err, "FindDefaultNetworkAdapter")
+//	}
+//
+//	// find external ethernet port and get its device eepPath
+//	eepPath, err := eep.Path()
+//	if err != nil {
+//		return errors.Wrap(err, "Path")
+//	}
+//
+//	extPortData, err := m.getDefaultClassValue(PortAllocSetData, network.ETHConnResSubType)
+//	if err != nil {
+//		return errors.Wrap(err, "getDefaultClassValue")
+//	}
+//	extPortData.Set("ElementName", defaultSwitchName+" external port")
+//	extPortData.Set("HostResource", []string{eepPath})
+//	extPortDataStr, err := extPortData.GetText(1)
+//	if err != nil {
+//		return errors.Wrap(err, "GetText")
+//	}
+//
+//	// SetInternalPort will create an internal port which will allow the OS to manage this switches network settings.
+//	mac, err := eep.GetProperty("PermanentAddress")
+//	if err != nil {
+//		return errors.Wrap(err, "GetProperty")
+//	}
+//	hostPath, err := m.getHostPath()
+//	if err != nil {
+//		return errors.Wrap(err, "getHostPath")
+//	}
+//	intPortData, err := m.getDefaultClassValue(PortAllocSetData, network.ETHConnResSubType)
+//	if err != nil {
+//		return errors.Wrap(err, "getDefaultClassValue")
+//	}
+//	intPortData.Set("HostResource", []string{hostPath})
+//	intPortData.Set("Address", mac.Value())
+//	intPortData.Set("ElementName", defaultSwitchName)
+//	intPortDataStr, err := intPortData.GetText(1)
+//	if err != nil {
+//		return errors.Wrap(err, "GetText")
+//	}
+//
+//	// modify switch
+//	jobPath := ole.VARIANT{}
+//	resultingSystem := ole.VARIANT{}
+//	jobState, err := m.switchMgr.Get("ModifyResourceSettings", []string{extPortDataStr, intPortDataStr}, nil, &resultingSystem, &jobPath)
+//	if err != nil {
+//		return errors.Wrap(err, "DefineSystem")
+//	}
+//	return m.waitForJob(jobState, jobPath)
+//}
 
 func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet bool) error {
 	// check if the switch exists
@@ -109,6 +198,11 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
+	fmt.Println(eep)
+	//eepText, err := eep.GetText(1)
+	//if err != nil {
+	//	return errors.Wrap(err, "GetText")
+	//}
 
 	// find external ethernet port and get its device eepPath
 	eepPath, err := eep.Path()

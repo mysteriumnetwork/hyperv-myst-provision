@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/pkg/errors"
 
 	"github.com/mysteriumnetwork/hyperv-node/provisioner"
@@ -25,30 +24,35 @@ type ImportOptions struct {
 func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
 	log.Println("ImportVM", opt)
 
-	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(opt.PreferEthernet); err != nil {
-		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
-	}
-
 	if opt.Force {
 		if err := m.RemoveVM(); err != nil {
 			return errors.Wrap(err, "RemoveVM")
 		}
 	}
-	vm, err := m.GetVM()
-	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
-		return errors.Wrap(err, "GetVM")
+	//vm, err := m.GetVM()
+	//if err != nil && !errors.Is(err, wmi.ErrNotFound) {
+	//	return errors.Wrap(err, "GetVM")
+	//}
+	//if vm != nil {
+	//	m.StopVM()
+	//	m.RemoveVM()
+	//}
+
+	err := m.RemoveSwitch()
+	if err != nil {
+		return errors.Wrap(err, "RemoveSwitch")
 	}
-	if vm == nil || errors.Is(err, wmi.ErrNotFound) {
+	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(opt.PreferEthernet); err != nil {
+		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
+	}
 
-		vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)
-		if err != nil {
-			return err
-		}
-
-		err = m.CreateVM(vhdFilePath)
-		if err != nil {
-			return errors.Wrap(err, "CreateVM")
-		}
+	vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)
+	if err != nil {
+		return err
+	}
+	err = m.CreateVM(vhdFilePath)
+	if err != nil {
+		return errors.Wrap(err, "CreateVM")
 	}
 
 	if err = m.EnableGuestServices(); err != nil {

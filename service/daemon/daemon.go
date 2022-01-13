@@ -78,13 +78,21 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			answer.pong_()
 
 		case commandStopVM:
-			err := d.mgr.StopVM()
+			err := d.mgr.RemoveSwitch()
 			if err != nil {
 				log.Err(err).Msgf("%s failed", commandStopVM)
 				answer.err_(err)
 			} else {
 				answer.ok_(nil)
 			}
+			//err := d.mgr.StopVM()
+			//if err != nil {
+			//	log.Err(err).Msgf("%s failed", commandStopVM)
+			//	answer.err_(err)
+			//} else {
+			//	d.mgr.RemoveVM()
+			//	answer.ok_(nil)
+			//}
 
 		case commandStartVM:
 			err := d.mgr.StartVM()

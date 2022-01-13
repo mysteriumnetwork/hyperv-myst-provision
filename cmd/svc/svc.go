@@ -85,6 +85,16 @@ func main() {
 			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
 		}
 	} else {
+		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
+		}
+		// Start service
+		svc := daemon.New(mgr)
+		if err := svc.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
+			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
+		}
+		return
 
 		if !w32.SHIsUserAnAdmin() {
 			utils.RunasWithArgsNoWait("")
@@ -106,8 +116,8 @@ func main() {
 			for {
 				fmt.Println("")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("[1] Enable node VM (prefer Ethernet connection)")
-				fmt.Println("[2] Enable node VM (prefer Wifi connection)")
+				fmt.Println("[1] Enable node VM (use Ethernet connection)")
+				fmt.Println("[2] Enable node VM (use Wifi connection)")
 				fmt.Println("[3] Disable node VM")
 				fmt.Println("[4] Exit")
 				fmt.Print("\n> ")
