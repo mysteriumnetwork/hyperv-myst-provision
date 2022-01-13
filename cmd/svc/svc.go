@@ -1,12 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/mysteriumnetwork/myst-launcher/utils"
+
+	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
+
 	"github.com/Microsoft/go-winio"
+	"github.com/gonutz/w32"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows"
 
@@ -17,7 +24,6 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/flags"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
-	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
 	"github.com/mysteriumnetwork/hyperv-node/service/util"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 )
@@ -26,14 +32,6 @@ func main() {
 	util.PanicHandler("main")
 	flags.Parse()
 
-	logOpts := logconfig.LogOptions{
-		LogLevel: "info",
-		Filepath: "",
-	}
-	if err := logconfig.Configure(logOpts); err != nil {
-		log.Fatal().Err(err).Msg("Failed to configure logging")
-	}
-
 	workDir, err := winutil.AppDataDir()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error getting AppDataDir: " + err.Error())
@@ -41,10 +39,6 @@ func main() {
 	err = os.Chdir(workDir)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to configure logging")
-	}
-	mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
 	}
 
 	if *flags.FlagInstall {
@@ -62,6 +56,11 @@ func main() {
 		log.Info().Msg("Supervisor installed")
 
 	} else if *flags.FlagUninstall {
+		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
+		}
+
 		log.Info().Msg("Uninstalling MysteriumVMSvc")
 		if err := install.Uninstall(); err != nil {
 			log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
@@ -107,7 +106,6 @@ func main() {
 			"cmd": "get-kvp",
 		}
 		kv := client.SendCommand(conn, cmd)
-		log.Info().Msgf("KV: %v", kv)
 
 		data := hyperv_wmi.NewKVMap(kv["data"])
 		if data != nil {
@@ -122,12 +120,92 @@ func main() {
 			}
 		}
 
-	} else {
+	} else if *flags.FlagWinService {
+		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+		if err != nil {
+			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
+		}
+		logOpts := logconfig.LogOptions{
+			LogLevel: "info",
+			Filepath: "",
+		}
+		if err := logconfig.Configure(logOpts); err != nil {
+			log.Fatal().Err(err).Msg("Failed to configure logging")
+		}
+
 		// Start service
 		svc := daemon.New(mgr)
 		if err := svc.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
 			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
 		}
+	} else {
+
+		if !w32.SHIsUserAnAdmin() {
+			utils.RunasWithArgsNoWait("")
+			return
+		} else {
+
+			for {
+				fmt.Println("")
+				fmt.Println("---------------------")
+				fmt.Println("[1] Enable node VM (prefer Ethernet connection)")
+				fmt.Println("[1] Enable node VM (prefer connection)")
+				fmt.Println("[2] Disable node VM")
+				fmt.Println("")
+				fmt.Print("?>")
+				b, _ := bufio.NewReader(os.Stdin).ReadBytes('\n')
+
+				switch strings.TrimSuffix(string(b), "\r\n") {
+				case "1":
+					path, err := thisPath()
+					if err != nil {
+						log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
+					}
+					options := install.Options{
+						SupervisorPath: path,
+					}
+					log.Info().Msgf("Installing supervisor with options: %#v", options)
+					if err = install.Install(options); err != nil {
+						log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
+					}
+					log.Info().Msg("Supervisor installed")
+
+				case "2":
+					mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+					if err != nil {
+						log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
+					}
+
+					log.Info().Msg("Uninstalling MysteriumVMSvc")
+					if err := install.Uninstall(); err != nil {
+						log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
+					}
+					if err := mgr.StopVM(); err != nil {
+						log.Fatal().Err(err).Msg("Failed to stop VM")
+					}
+					if err := mgr.RemoveVM(); err != nil {
+						log.Fatal().Err(err).Msg("Failed to remove VM")
+					}
+					log.Info().Msg("MysteriumVMSvc uninstalled")
+
+				}
+
+			}
+			//path, err := thisPath()
+			//if err != nil {
+			//	log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
+			//}
+			//options := install.Options{
+			//	SupervisorPath: path,
+			//}
+			//log.Info().Msgf("Installing supervisor with options: %#v", options)
+			//if err = install.Install(options); err != nil {
+			//	log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
+			//}
+			//log.Info().Msg("Supervisor installed")
+
+		}
+
 	}
 }
 

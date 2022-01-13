@@ -983,6 +983,8 @@ github.com/mysteriumnetwork/myst-launcher v0.0.0-20211221075138-6f8014606bf0/go.
 github.com/mysteriumnetwork/node v0.0.0-20220104164347-5ded05b0ebf0 h1:D30dk14e6pO3suyj0WvO88CWyMSva1yu3XNdDIwJ6OA=
 github.com/mysteriumnetwork/node v0.0.0-20220104164347-5ded05b0ebf0/go.mod h1:WDW9HAX30dK/PrwdNz6dMYntIIvZZ2YmY+DTgDYR6B8=
 github.com/mysteriumnetwork/payments v1.0.1-0.20211025073343-0b355972a602/go.mod h1:dS9ux8H00YhsgBrsqT5pAcaQrcnSGHdLrwy+e+8a7U0=
+github.com/mysteriumnetwork/w32 v1.0.1-0.20211216070125-4741b8b8111b h1:7jQ0RQA4Jq7Hm0/U23rj8kwJLWRvrwH7MQwXIIJqotg=
+github.com/mysteriumnetwork/w32 v1.0.1-0.20211216070125-4741b8b8111b/go.mod h1:4lsdGqaSKAwKr+BJzdLFv1Ujmeq6kiuwllZmEP1mKLg=
 github.com/naoina/go-stringutil v0.1.0/go.mod h1:XJ2SJL9jCtBh+P9q5btrd/Ylo8XwT/h1USek5+NqSA0=
 github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416/go.mod h1:NBIhNtsFMo3G2szEBne+bO4gS192HuIYRqfvOWb4i1E=
 github.com/nats-io/jwt v1.2.2/go.mod h1:/xX356yQA6LuXI9xWW7mZNpxgF2mBmGecH+Fj34sP5Q=
