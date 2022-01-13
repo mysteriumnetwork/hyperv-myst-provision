@@ -3,14 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/mysteriumnetwork/myst-launcher/utils"
-
-	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
 
 	"github.com/Microsoft/go-winio"
 	"github.com/gonutz/w32"
@@ -24,8 +20,11 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/flags"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
+	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
+	"github.com/mysteriumnetwork/hyperv-node/service/platform"
 	"github.com/mysteriumnetwork/hyperv-node/service/util"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
+	"github.com/mysteriumnetwork/myst-launcher/utils"
 )
 
 func main() {
@@ -42,12 +41,12 @@ func main() {
 	}
 
 	if *flags.FlagInstall {
-		path, err := thisPath()
+		path, err := util.ThisPath()
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
 		}
 		options := install.Options{
-			SupervisorPath: path,
+			ExecuatblePath: path,
 		}
 		log.Info().Msgf("Installing supervisor with options: %#v", options)
 		if err = install.Install(options); err != nil {
@@ -56,69 +55,16 @@ func main() {
 		log.Info().Msg("Supervisor installed")
 
 	} else if *flags.FlagUninstall {
-		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
-		}
+		disableVM()
 
 		log.Info().Msg("Uninstalling MysteriumVMSvc")
 		if err := install.Uninstall(); err != nil {
 			log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
 		}
-		if err := mgr.StopVM(); err != nil {
-			log.Fatal().Err(err).Msg("Failed to stop VM")
-		}
-		if err := mgr.RemoveVM(); err != nil {
-			log.Fatal().Err(err).Msg("Failed to remove VM")
-		}
 		log.Info().Msg("MysteriumVMSvc uninstalled")
 
 	} else if *flags.FlagImportVM {
-
-		homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
-		if err != nil {
-			log.Err(err).Msg("error getting profile path")
-			return
-		}
-		keystorePath := homeDir + `\.mysterium\keystore`
-
-		conn, err := winio.DialPipe(consts.Sock, nil)
-		if err != nil {
-			log.Err(err).Msg("error listening")
-			return
-		}
-		defer conn.Close()
-
-		fmt.Println("flags.FlagImportVMPreferEthernet", *flags.FlagImportVMPreferEthernet)
-		cmd := hyperv_wmi.KVMap{
-			"cmd":             "import-vm",
-			"keystore":        keystorePath,
-			"report-progress": true,
-			"prefer-ethernet": *flags.FlagImportVMPreferEthernet,
-		}
-		res := client.SendCommand(conn, cmd)
-		if res["resp"] == "error" {
-			fmt.Println("error:", res["err"])
-			return
-		}
-
-		cmd = hyperv_wmi.KVMap{
-			"cmd": "get-kvp",
-		}
-		kv := client.SendCommand(conn, cmd)
-
-		data := hyperv_wmi.NewKVMap(kv["data"])
-		if data != nil {
-			ip, ok := data["NetworkAddressIPv4"].(string)
-			if ok && ip != "" {
-				log.Print("Web UI is at http://" + ip + ":4449")
-				fmt.Println("Web UI is at http://" + ip + ":4449")
-
-				time.Sleep(7 * time.Second)
-				util.OpenUrlInBrowser("http://" + ip + ":4449")
-				return
-			}
-		}
+		enableVM(*flags.FlagImportVMPreferEthernet)
 
 	} else if *flags.FlagWinService {
 		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
@@ -144,79 +90,131 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
+			platformMgr, _ := platform.NewManager()
+			ok, err := platformMgr.Features()
+			if err != nil {
+				log.Fatal().Err(err).Msg("Failed to determine HyperV")
+			}
+			if !ok {
+				log.Info().Msg("HyperV is not enabled")
+				err := platformMgr.EnableHyperVPlatform()
+				if err != nil {
+					log.Fatal().Err(err).Msg("Failed to enable HyperV")
+				}
+			}
 
 			for {
 				fmt.Println("")
-				fmt.Println("---------------------")
+				fmt.Println("----------------------------------------------")
 				fmt.Println("[1] Enable node VM (prefer Ethernet connection)")
-				fmt.Println("[1] Enable node VM (prefer connection)")
-				fmt.Println("[2] Disable node VM")
-				fmt.Println("")
-				fmt.Print("?>")
+				fmt.Println("[2] Enable node VM (prefer Wifi connection)")
+				fmt.Println("[3] Disable node VM")
+				fmt.Println("[4] Exit")
+				fmt.Print("\n> ")
 				b, _ := bufio.NewReader(os.Stdin).ReadBytes('\n')
-
-				switch strings.TrimSuffix(string(b), "\r\n") {
-				case "1":
-					path, err := thisPath()
+				k := strings.TrimSuffix(string(b), "\r\n")
+				switch k {
+				case "1", "2":
+					path, err := util.ThisPath()
 					if err != nil {
 						log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
 					}
 					options := install.Options{
-						SupervisorPath: path,
+						ExecuatblePath: path,
 					}
 					log.Info().Msgf("Installing supervisor with options: %#v", options)
 					if err = install.Install(options); err != nil {
 						log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
 					}
 					log.Info().Msg("Supervisor installed")
+					enableVM(k == "1")
 
-				case "2":
-					mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
-					if err != nil {
-						log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
-					}
+				case "3":
+					disableVM()
 
 					log.Info().Msg("Uninstalling MysteriumVMSvc")
 					if err := install.Uninstall(); err != nil {
 						log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
 					}
-					if err := mgr.StopVM(); err != nil {
-						log.Fatal().Err(err).Msg("Failed to stop VM")
-					}
-					if err := mgr.RemoveVM(); err != nil {
-						log.Fatal().Err(err).Msg("Failed to remove VM")
-					}
 					log.Info().Msg("MysteriumVMSvc uninstalled")
 
+				case "4":
+					return
 				}
-
 			}
-			//path, err := thisPath()
-			//if err != nil {
-			//	log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
-			//}
-			//options := install.Options{
-			//	SupervisorPath: path,
-			//}
-			//log.Info().Msgf("Installing supervisor with options: %#v", options)
-			//if err = install.Install(options); err != nil {
-			//	log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
-			//}
-			//log.Info().Msg("Supervisor installed")
-
 		}
-
 	}
 }
 
-func thisPath() (string, error) {
-	thisExec, err := os.Executable()
+func enableVM(preferEthernet bool) {
+	var conn net.Conn
+	err := utils.Retry(3, time.Second, func() error {
+		var err error
+		conn, err = winio.DialPipe(consts.Sock, nil)
+		return err
+	})
 	if err != nil {
-		return "", err
+		log.Err(err).Msg("error listening")
+		return
 	}
-	thisPath, err := filepath.Abs(thisExec)
+	defer conn.Close()
+
+	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
 	if err != nil {
-		return "", err
+		log.Err(err).Msg("error getting profile path")
+		return
 	}
-	return thisPath, nil
+	keystorePath := homeDir + `\.mysterium\keystore`
+	cmd := hyperv_wmi.KVMap{
+		"cmd":             "import-vm",
+		"keystore":        keystorePath,
+		"report-progress": true,
+		"prefer-ethernet": preferEthernet,
+	}
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		fmt.Println("error:", res["err"])
+		return
+	}
+
+	cmd = hyperv_wmi.KVMap{
+		"cmd": "get-kvp",
+	}
+	kv := client.SendCommand(conn, cmd)
+
+	data := hyperv_wmi.NewKVMap(kv["data"])
+	if data != nil {
+		ip, ok := data["NetworkAddressIPv4"].(string)
+		if ok && ip != "" {
+			log.Print("Web UI is at http://" + ip + ":4449")
+			fmt.Println("Web UI is at http://" + ip + ":4449")
+
+			time.Sleep(7 * time.Second)
+			util.OpenUrlInBrowser("http://" + ip + ":4449")
+			return
+		}
+	}
+}
+
+func disableVM() {
+	var conn net.Conn
+	err := utils.Retry(3, time.Second, func() error {
+		var err error
+		conn, err = winio.DialPipe(consts.Sock, nil)
+		return err
+	})
+	if err != nil {
+		log.Print("error listening")
+		return
+	}
+	defer conn.Close()
+
+	cmd := hyperv_wmi.KVMap{
+		"cmd": "stop-vm",
+	}
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		fmt.Println("error:", res["err"])
+		return
+	}
 }

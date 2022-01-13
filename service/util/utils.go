@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"syscall"
 	"time"
@@ -40,4 +41,16 @@ func OpenUrlInBrowser(url string) {
 		"url.dll,FileProtocolHandler "+url,
 		"",
 		syscall.SW_NORMAL)
+}
+
+func ThisPath() (string, error) {
+	thisExec, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	thisPath, err := filepath.Abs(thisExec)
+	if err != nil {
+		return "", err
+	}
+	return thisPath, nil
 }

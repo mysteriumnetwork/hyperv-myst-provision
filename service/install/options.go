@@ -23,9 +23,9 @@ var errInvalid = errors.New("invalid options")
 
 // Options for installation.
 type Options struct {
-	SupervisorPath string
+	ExecuatblePath string
 }
 
 func (o Options) valid() bool {
-	return o.SupervisorPath != ""
+	return o.ExecuatblePath != ""
 }

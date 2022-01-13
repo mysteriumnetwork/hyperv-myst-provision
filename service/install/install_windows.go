@@ -92,7 +92,7 @@ func isErrRegistryKeyExist(err error) bool {
 }
 
 func installAndStartService(m *mgr.Mgr, name string, options Options, config mgr.Config) error {
-	s, err := m.CreateService(name, options.SupervisorPath, config, "-winservice")
+	s, err := m.CreateService(name, options.ExecuatblePath, config, "-winservice")
 	if err != nil {
 		return fmt.Errorf("could not create service: %w", err)
 	}
