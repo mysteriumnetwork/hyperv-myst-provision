@@ -13,11 +13,11 @@ import (
 )
 
 func PanicHandler(threadName string) {
-	if err := recover(); err != nil {
+	if panic := recover(); panic != nil {
 
 		dir, _ := os.Getwd()
 		fmt.Printf("Stacktrace %s: %s\n", threadName, debug.Stack())
-		fname := fmt.Sprintf("%s/launcher_trace_%d.txt", dir, time.Now().Second())
+		fname := fmt.Sprintf("%s/launcher_trace_%d.txt", dir, time.Now().Unix())
 		f, err := os.Create(fname)
 		if err != nil {
 			fmt.Println(err)
@@ -27,6 +27,7 @@ func PanicHandler(threadName string) {
 
 		var bu bytes.Buffer
 
+		bu.WriteString(fmt.Sprintf("Panic: %v\n", panic))
 		bu.WriteString(fmt.Sprintf("Stacktrace %s: \n", threadName))
 		bu.Write(debug.Stack())
 		f.Write(bu.Bytes())

@@ -28,7 +28,7 @@ import (
 )
 
 func main() {
-	util.PanicHandler("main")
+	defer util.PanicHandler("main")
 	flags.Parse()
 
 	workDir, err := winutil.AppDataDir()
