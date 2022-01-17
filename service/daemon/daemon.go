@@ -82,17 +82,15 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			if err != nil {
 				log.Err(err).Msgf("%s failed", commandStopVM)
 				answer.err_(err)
+			}
+			err = d.mgr.StopVM()
+			if err != nil {
+				log.Err(err).Msgf("%s failed", commandStopVM)
+				answer.err_(err)
 			} else {
+				d.mgr.RemoveVM()
 				answer.ok_(nil)
 			}
-			//err := d.mgr.StopVM()
-			//if err != nil {
-			//	log.Err(err).Msgf("%s failed", commandStopVM)
-			//	answer.err_(err)
-			//} else {
-			//	d.mgr.RemoveVM()
-			//	answer.ok_(nil)
-			//}
 
 		case commandStartVM:
 			err := d.mgr.StartVM()
@@ -122,7 +120,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
 					Force:                true, //false,
 					VMBootPollSeconds:    5,
-					VMBootTimeoutMinutes: 1,
+					VMBootTimeoutMinutes: 5,
 					KeystoreDir:          keystoreDir,
 					PreferEthernet:       preferEthernet,
 				}, fn)

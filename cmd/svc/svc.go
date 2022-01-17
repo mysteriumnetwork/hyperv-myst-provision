@@ -85,16 +85,6 @@ func main() {
 			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
 		}
 	} else {
-		//mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
-		//if err != nil {
-		//	log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
-		//}
-		//// Start service
-		//svc := daemon.New(mgr)
-		//if err := svc.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
-		//	log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
-		//}
-		//return
 
 		if !w32.SHIsUserAnAdmin() {
 			utils.RunasWithArgsNoWait("")

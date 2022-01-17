@@ -29,21 +29,8 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 			return errors.Wrap(err, "RemoveVM")
 		}
 	}
-	//vm, err := m.GetVM()
-	//if err != nil && !errors.Is(err, wmi.ErrNotFound) {
-	//	return errors.Wrap(err, "GetVM")
-	//}
-	//if vm != nil {
-	//	m.StopVM()
-	//	m.RemoveVM()
-	//}
-
-	err := m.RemoveSwitch()
-	if err != nil {
-		return errors.Wrap(err, "RemoveSwitch")
-	}
-	if err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(opt.PreferEthernet); err != nil {
-		return errors.Wrap(err, "CreateExternalNetworkSwitchIfNotExistsAndAssign")
+	if err := m.ModifySwitchSettings(opt.PreferEthernet); err != nil {
+		return errors.Wrap(err, "ModifySwitchSettings(")
 	}
 
 	vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)

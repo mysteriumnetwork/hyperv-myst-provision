@@ -19,8 +19,10 @@ const (
 type Manager struct {
 	vmName string
 
-	cimv2            *wmi.WMI
-	con              *wmi.WMI
+	cimv2 *wmi.WMI
+	con   *wmi.WMI
+	wmi   *wmi.WMI
+
 	switchMgr        *wmi.Result
 	vsMgr            *wmi.Result
 	imageMgr         *wmi.Result
@@ -38,6 +40,11 @@ func NewVMManager(vmName string) (*Manager, error) {
 	}
 
 	w, err := wmi.NewConnection(".", `root\virtualization\v2`)
+	if err != nil {
+		return nil, err
+	}
+
+	wmi_, err := wmi.NewConnection(".", `root\wmi`)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +68,7 @@ func NewVMManager(vmName string) (*Manager, error) {
 
 		cimv2:     cimv2,
 		con:       w,
+		wmi:       wmi_,
 		switchMgr: switchMgr,
 		vsMgr:     vsMgr,
 		imageMgr:  imageMgr,
@@ -419,6 +427,7 @@ func (m *Manager) EnableGuestServices() error {
 }
 
 func (m *Manager) CopyFile(src, dst string) error {
+	log.Println("CopyFile>", src, dst)
 
 	// create switch settings in xml representation
 	copyFileToGuestSettingDataClass, err := m.con.Get("Msvm_CopyFileToGuestSettingData")
