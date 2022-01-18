@@ -8,6 +8,7 @@ import (
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -24,8 +25,8 @@ func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 
 // Find a network adapter with minimum metric and use it for virtual network switch
 // prefer active
-// returns:
-func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, error) {
+// returns: port, id, error
+func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, string, error) {
 	//adapterConfs := make([]adapter, 0)
 
 	// 9    - wifi
@@ -34,7 +35,7 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, e
 	nameToType := make(map[string]int32)
 	mediaTypes, err := m.wmi.Gwmi("MSNdis_PhysicalMediumType", []string{}, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "Get")
+		return nil, "", errors.Wrap(err, "Get")
 	}
 	el, _ := mediaTypes.Elements()
 	for _, v := range el {
@@ -49,7 +50,7 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, e
 	}
 	adp, err := m.cimv2.Gwmi("Win32_NetworkAdapter", []string{}, qParams)
 	if err != nil {
-		return nil, errors.Wrap(err, "Get")
+		return nil, "", errors.Wrap(err, "Get")
 	}
 	el, _ = adp.Elements()
 	for _, v := range el {
@@ -70,9 +71,9 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, e
 		fmt.Println(">>>>", id, name, connType, ok, servName)
 		if (preferEthernet && connType == 0) || (!preferEthernet && connType != 0) {
 			a, err := m.findNetworkAdapterByID(id, preferEthernet)
-			fmt.Println(">", a, err)
+			fmt.Println(">", a, id, err)
 			if err == nil {
-				return a, nil
+				return a, id, nil
 			}
 		}
 	}
@@ -109,7 +110,7 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, e
 	//}
 
 	// TODO: fallback to wifi
-	return nil, nil
+	return nil, "", nil
 }
 
 func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.Result, error) {
@@ -157,13 +158,13 @@ func (m *Manager) RemoveSwitch() error {
 
 // Modify switch (set external connection) or create a new one
 func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
+	log.Info().Msgf("ModifySwitchSettings %v", preferEthernet)
 
 	sw, err := m.GetSwitch(defaultSwitchName)
 	if errors.Is(err, wmi.ErrNotFound) {
 		err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet)
 		return err
 	}
-
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -173,12 +174,20 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 	}
 	fmt.Println(swPath)
 
+	// find external ethernet port and get its device eepPath
+	eep, devID, err := m.FindDefaultNetworkAdapter(preferEthernet)
+	if err != nil {
+		return errors.Wrap(err, "FindDefaultNetworkAdapter")
+	}
+	eepPath, err := eep.Path()
+	if err != nil {
+		return errors.Wrap(err, "Path")
+	}
+
 	switchSettingsResult, err := sw.Get("associators_", nil, VMSwitchSettings)
-	fmt.Println(switchSettingsResult, err)
 	if err != nil {
 		return err
 	}
-	fmt.Println(switchSettingsResult.Count())
 	switchSettings, err := switchSettingsResult.ItemAtIndex(0)
 
 	portsData, err := switchSettings.Get("associators_", nil, PortAllocSetData)
@@ -189,8 +198,38 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 	var ports []string
 	for i := 0; i < count; i++ {
 		var err error
-		sd, err := portsData.ItemAtIndex(i)
-		p, err := sd.Path()
+		port, err := portsData.ItemAtIndex(i)
+		if err != nil {
+			return errors.Wrap(err, "ItemAtIndex")
+		}
+
+		hr, err := port.GetProperty("HostResource")
+		if err != nil {
+			return errors.Wrap(err, "GetProperty")
+		}
+		//log.Print("hr", hr, err)
+		vals := hr.ToArray().ToValueArray()[0].(string)
+		//log.Print("vals", vals)
+		for _, pair := range strings.Split(vals, ",") {
+			//log.Print(">", pair)
+			log.Info().Msgf("> %v", pair)
+
+			kv := strings.Split(pair, "=")
+			if len(kv) < 2 {
+				continue
+			}
+			if kv[0] == "DeviceID" {
+				hrDeviceID := strings.TrimRight(strings.TrimLeft(kv[1], `"`), `"`)
+				sameDevice := hrDeviceID == "Microsoft:"+devID
+				log.Info().Msgf("DeviceID> %v %v skipping %v", hrDeviceID, devID, sameDevice)
+				if sameDevice {
+					// don't change switch settings
+					return nil
+				}
+			}
+		}
+
+		p, err := port.Path()
 		_ = err
 		ports = append(ports, p)
 	}
@@ -207,18 +246,6 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 		return errors.Wrap(err, "RemoveResourceSettings")
 	}
 	m.waitForJob(jobState, jobPath)
-
-	// find adapter
-	eep, err := m.FindDefaultNetworkAdapter(preferEthernet)
-	if err != nil {
-		return errors.Wrap(err, "FindDefaultNetworkAdapter")
-	}
-	// find external ethernet port and get its device eepPath
-	eepPath, err := eep.Path()
-	if err != nil {
-		return errors.Wrap(err, "Path")
-	}
-	fmt.Println(eepPath)
 
 	extPortData, err := m.getDefaultClassValue(PortAllocSetData, network.ETHConnResSubType)
 	if err != nil {
@@ -287,7 +314,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet
 		return errors.Wrap(err, "GetText")
 	}
 
-	eep, err := m.FindDefaultNetworkAdapter(preferEthernet)
+	eep, _, err := m.FindDefaultNetworkAdapter(preferEthernet)
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}

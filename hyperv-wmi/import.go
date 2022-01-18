@@ -22,7 +22,7 @@ type ImportOptions struct {
 }
 
 func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
-	log.Println("ImportVM", opt)
+	log.Println("ImportVM >", opt)
 
 	if opt.Force {
 		if err := m.RemoveVM(); err != nil {
@@ -30,7 +30,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		}
 	}
 	if err := m.ModifySwitchSettings(opt.PreferEthernet); err != nil {
-		return errors.Wrap(err, "ModifySwitchSettings(")
+		return errors.Wrap(err, "ModifySwitchSettings")
 	}
 
 	vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)
