@@ -21,5 +21,5 @@
 package logconfig
 
 func defaultLogPath() (string, error) {
-	return "/var/log/myst_supervisor", nil
+	return "/var/log/myst_vm_helper", nil
 }

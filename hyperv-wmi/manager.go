@@ -459,7 +459,7 @@ func (m *Manager) CopyFile(src, dst string) error {
 	return nil
 }
 
-func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
+func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
 	log.Printf("waiting for VM `%s` to boot\n", m.vmName)
 	deadline := time.Now().Add(timeout)
 
@@ -474,6 +474,33 @@ func (m *Manager) WaitUntilBooted(pollEvery, timeout time.Duration) error {
 			ip := m.Kvp["NetworkAddressIPv4"]
 			if ip != nil && ip != "" {
 				log.Println("VM IP:", ip)
+				return nil
+			}
+
+			if time.Now().After(deadline) {
+				log.Printf("time out while waiting for VM `%s` to boot\n", m.vmName)
+				return errors.New("Timeout")
+			}
+		}
+	}
+}
+
+func (m *Manager) WaitUntilBoot(pollEvery, timeout time.Duration) error {
+	log.Printf("waiting for VM `%s` to boot\n", m.vmName)
+	deadline := time.Now().Add(timeout)
+
+	for {
+		select {
+		case <-time.After(pollEvery):
+			err := m.GetGuestKVP()
+			if err != nil {
+				return errors.Wrap(err, "GetGuestKVP")
+			}
+			log.Println("GuestKVP>", m.Kvp)
+
+			osName := m.Kvp["OSName"]
+			if osName != nil && osName != "" {
+				log.Println("VM OSName:", osName)
 				return nil
 			}
 

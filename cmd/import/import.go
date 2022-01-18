@@ -12,7 +12,7 @@ import (
 )
 
 type flagsSet struct {
-	VMName               string `default:"Myst HyperV Alpine_" usage:"hyper-v guest VM name"`
+	VMName               string `default:"Myst HyperV Alpine" usage:"hyper-v guest VM name"`
 	WorkDir              string `usage:"path to hyperv VM folder"`
 	KeystoreDir          string `usage:"path to keystore folder (C:\Users\<user>\.mysterium\keystore"`
 	Force                bool   `default:"false" usage:"will remove any existing VM with same name"`

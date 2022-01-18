@@ -48,7 +48,7 @@ func New(manager *hyperv_wmi2.Manager) Daemon {
 	return d
 }
 
-// Start supervisor daemon. Blocks.
+// Start the daemon. Blocks.
 func (d *Daemon) Start(options transport2.Options) error {
 	if d.cfg.Enabled {
 		d.mgr.StartVM()
@@ -120,7 +120,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
 					Force:                true, //false,
 					VMBootPollSeconds:    5,
-					VMBootTimeoutMinutes: 5,
+					VMBootTimeoutMinutes: 1,
 					KeystoreDir:          keystoreDir,
 					PreferEthernet:       preferEthernet,
 				}, fn)

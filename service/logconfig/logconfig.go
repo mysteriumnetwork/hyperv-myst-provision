@@ -38,7 +38,7 @@ type LogOptions struct {
 	Filepath string
 }
 
-// Configure configures supervisor global logger instance.
+// Configure configures global logger instance.
 func Configure(opts LogOptions) error {
 	logLevel, err := zerolog.ParseLevel(opts.LogLevel)
 	if err != nil {

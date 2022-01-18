@@ -23,7 +23,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Supervisor CLI flags.
+// VM helper CLI flags.
 var (
 	FlagVersion   = flag.Bool("version", false, "Print version")
 	FlagInstall   = flag.Bool("install", false, "Install or repair VM helper")
@@ -32,13 +32,13 @@ var (
 	FlagImportVM               = flag.Bool("import", false, "Import myst VM")
 	FlagImportVMPreferEthernet = flag.Bool("prefer-ethernet", false, "Prefer Ethernet connection")
 
-	FlagLogFilePath = flag.String("log-path", "", "Supervisor log file path")
+	FlagLogFilePath = flag.String("log-path", "", "Log file path")
 	FlagLogLevel    = flag.String("log-level", zerolog.InfoLevel.String(), "Logging level")
 	FlagWinService  = flag.Bool("winservice", false, "Run via service manager instead of standalone (windows only).")
-	FlagVMName      = flag.String("vm-name", "Myst HyperV Alpine_", "hyper-v guest VM name")
+	FlagVMName      = flag.String("vm-name", "Myst HyperV Alpine", "hyper-v guest VM name")
 )
 
-// Parse parses supervisor flags.
+// Parse parses command flags.
 func Parse() {
 	flag.Parse()
 }

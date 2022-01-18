@@ -126,7 +126,7 @@ func main() {
 					if err = install.Install(options); err != nil {
 						log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
 					}
-					log.Info().Msg("Supervisor installed")
+					log.Info().Msg("MysteriumVMSvc installed")
 					enableVM(k == "1")
 
 				case "3":

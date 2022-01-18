@@ -52,12 +52,12 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "StartGuestFileService")
 	}
 
-	err = m.WaitUntilBooted(
+	err = m.WaitUntilBoot(
 		time.Duration(opt.VMBootPollSeconds)*time.Second,
 		time.Duration(opt.VMBootTimeoutMinutes)*time.Minute,
 	)
 	if err != nil {
-		return errors.Wrap(err, "WaitUntilBooted")
+		return errors.Wrap(err, "WaitUntilBoot")
 	}
 
 	keystorePath := opt.KeystoreDir
@@ -77,6 +77,14 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 	})
 	if err != nil {
 		return errors.Wrap(err, "Walk")
+	}
+
+	err = m.WaitUntilGotIP(
+		time.Duration(opt.VMBootPollSeconds)*time.Second,
+		time.Duration(opt.VMBootTimeoutMinutes)*time.Minute,
+	)
+	if err != nil {
+		return errors.Wrap(err, "WaitUntilGotIP")
 	}
 
 	return nil
