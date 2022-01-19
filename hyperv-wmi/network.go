@@ -27,7 +27,6 @@ func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 // prefer active
 // returns: port, id, error
 func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, string, error) {
-	//adapterConfs := make([]adapter, 0)
 
 	// 9    - wifi
 	// 0    - ethernet
@@ -68,53 +67,22 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, s
 			// skip bluetooth
 			continue
 		}
-		fmt.Println(">>>>", id, name, connType, ok, servName)
+		log.Print("dbg >", id, name, connType, ok, servName)
 		if (preferEthernet && connType == 0) || (!preferEthernet && connType != 0) {
 			a, err := m.findNetworkAdapterByID(id, preferEthernet)
-			fmt.Println(">", a, id, err)
+			log.Print("a>", a, id, err)
 			if err == nil {
 				return a, id, nil
 			}
 		}
 	}
 
-	//adapterConfs := make([]adapter, 0)
-	//qParams := []wmi.Query{
-	//	&wmi.AndQuery{wmi.QueryFields{Key: "IPEnabled", Value: true, Type: wmi.Equals}},
-	//}
-	//confs, err := m.cimv2.Gwmi("Win32_NetworkAdapterConfiguration", []string{}, qParams)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "Get")
-	//}
-	//el, _ := confs.Elements()
-	//for _, v := range el {
-	//	c, _ := v.GetProperty("IPConnectionMetric")
-	//	id, _ := v.GetProperty("SettingID")
-	//	description, _ := v.GetProperty("Description")
-	//
-	//	a := adapter{
-	//		id:          id.Value().(string),
-	//		description: description.Value().(string),
-	//		metric:      c.Value().(int32),
-	//	}
-	//	adapterConfs = append(adapterConfs, a)
-	//	fmt.Println("a1>", a)
-	//}
-	//sort.Sort(metricSorter(adapterConfs))
-	//var a *wmi.Result
-	//for _, ac := range adapterConfs {
-	//	a, err = m.findNetworkAdapterByID(ac.id, preferEthernet)
-	//	if err == nil {
-	//		return a, nil
-	//	}
-	//}
-
 	// TODO: fallback to wifi
 	return nil, "", nil
 }
 
 func (m *Manager) findNetworkAdapterByID(id string, preferEthernet bool) (*wmi.Result, error) {
-	fmt.Println("findNetworkAdapterByID>", id, preferEthernet)
+	log.Print("findNetworkAdapterByID>", id, preferEthernet)
 
 	qParams := []wmi.Query{
 		//&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
@@ -318,11 +286,6 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
-	//fmt.Println(eep)
-	//eepText, err := eep.GetText(1)
-	//if err != nil {
-	//	return errors.Wrap(err, "GetText")
-	//}
 
 	// find external ethernet port and get its device eepPath
 	eepPath, err := eep.Path()

@@ -2,7 +2,7 @@ package hyperv_wmi
 
 import (
 	"encoding/xml"
-	"fmt"
+	"log"
 	"strings"
 
 	"github.com/gabriel-samfira/go-wmi/virt/vm"
@@ -108,7 +108,7 @@ func (m *Manager) getDefaultClassValue(class, resourceSubType string) (*wmi.Resu
 }
 
 func (m *Manager) waitForJob(jobState *wmi.Result, jobPath ole.VARIANT) error {
-	fmt.Println("waitForJob>", jobState.Value().(int32))
+	log.Println("waitForJob>", jobState.Value().(int32))
 	if jobState.Value().(int32) == wmi.JobStatusStarted {
 		err := wmi.WaitForJob(jobPath.Value().(string))
 		if err != nil {
