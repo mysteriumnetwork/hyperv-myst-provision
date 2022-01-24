@@ -15,3 +15,7 @@ rc-update add hv_vss_daemon default
 # rc-service hv_fcopy_daemon start
 # rc-service hv_kvp_daemon start
 # rc-service hv_vss_daemon start
+
+# start crashed services periodically
+echo '* * * * * openrc' > /etc/crontabs/root
+rc-update add crond
