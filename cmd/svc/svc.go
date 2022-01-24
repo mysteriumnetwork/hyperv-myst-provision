@@ -10,6 +10,7 @@ import (
 
 	"github.com/Microsoft/go-winio"
 	"github.com/gonutz/w32"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sys/windows"
 
@@ -107,31 +108,6 @@ func main() {
 				}
 			}
 
-			//err = func() error {
-			//	m, err := hyperv_wmi.NewVMManager("Myst HyperV Alpine")
-			//	if err != nil {
-			//		return errors.Wrap(err, "NewVMManager")
-			//	}
-			//
-			//	// find external ethernet port and get its device eepPath
-			//	eep, adp, devID, err := m.FindDefaultNetworkAdapter(false)
-			//	if err != nil {
-			//		return errors.Wrap(err, "FindDefaultNetworkAdapter")
-			//	}
-			//	eepPath, err := eep.Path()
-			//	if err != nil {
-			//		return errors.Wrap(err, "Path")
-			//	}
-			//	fmt.Println(eepPath, devID)
-			//
-			//	//WaitForNetworkReady
-			//	m.AdapterHasIPAddress(adp)
-			//
-			//	return nil
-			//}()
-			//fmt.Println(err)
-			//return
-
 			for {
 				fmt.Println("")
 				fmt.Println("----------------------------------------------")
@@ -144,28 +120,21 @@ func main() {
 				k := strings.TrimSuffix(string(b), "\r\n")
 				switch k {
 				case "1", "2":
-					path, err := util.ThisPath()
+					err := installSvc()
 					if err != nil {
-						log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
+						log.Fatal().Err(err).Msg("Install service")
 					}
-					options := install.Options{
-						ExecuatblePath: path,
+					err = enableVM(k == "1")
+					if err != nil {
+						log.Fatal().Err(err).Msg("Enable VM")
 					}
-					log.Info().Msgf("Installing supervisor with options: %#v", options)
-					if err = install.Install(options); err != nil {
-						log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
-					}
-					log.Info().Msg("MysteriumVMSvc installed")
-					enableVM(k == "1")
 
 				case "3":
-					disableVM()
-
-					log.Info().Msg("Uninstalling MysteriumVMSvc")
-					if err := install.Uninstall(); err != nil {
-						log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
+					err := installSvc()
+					if err != nil {
+						log.Fatal().Err(err).Msg("Install service")
 					}
-					log.Info().Msg("MysteriumVMSvc uninstalled")
+					disableVM()
 
 				case "4":
 					return
@@ -175,7 +144,23 @@ func main() {
 	}
 }
 
-func enableVM(preferEthernet bool) {
+func installSvc() error {
+	path, err := util.ThisPath()
+	if err != nil {
+		return errors.Wrap(err, "Failed to determine MysteriumVMSvc path")
+	}
+	options := install.Options{
+		ExecuatblePath: path,
+	}
+	log.Info().Msgf("Installing supervisor with options: %#v", options)
+	if err = install.Install(options); err != nil {
+		return errors.Wrap(err, "Failed to install MysteriumVMSvc")
+	}
+	log.Info().Msg("MysteriumVMSvc installed")
+	return nil
+}
+
+func enableVM(preferEthernet bool) error {
 	var conn net.Conn
 	err := utils.Retry(3, time.Second, func() error {
 		var err error
@@ -184,14 +169,14 @@ func enableVM(preferEthernet bool) {
 	})
 	if err != nil {
 		log.Err(err).Msg("error listening")
-		return
+		return err
 	}
 	defer conn.Close()
 
 	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
 	if err != nil {
 		log.Err(err).Msg("error getting profile path")
-		return
+		return err
 	}
 	keystorePath := homeDir + `\.mysterium\keystore`
 	cmd := hyperv_wmi.KVMap{
@@ -202,8 +187,8 @@ func enableVM(preferEthernet bool) {
 	}
 	res := client.SendCommand(conn, cmd)
 	if res["resp"] == "error" {
-		fmt.Println("error:", res["err"])
-		return
+		log.Error().Msgf("Send command: %s", res["err"])
+		return err
 	}
 
 	cmd = hyperv_wmi.KVMap{
@@ -220,9 +205,11 @@ func enableVM(preferEthernet bool) {
 
 			time.Sleep(7 * time.Second)
 			util.OpenUrlInBrowser("http://" + ip + ":4449")
-			return
+			return nil
 		}
 	}
+
+	return nil
 }
 
 func disableVM() {
