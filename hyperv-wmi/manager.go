@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
+
 	"github.com/gabriel-samfira/go-wmi/utils"
 	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
@@ -30,6 +32,7 @@ type Manager struct {
 
 	// guest KV map
 	Kvp map[string]interface{}
+	n   winutil.Notifier
 }
 
 // NewVMManager returns a new Manager type
@@ -63,6 +66,8 @@ func NewVMManager(vmName string) (*Manager, error) {
 		return nil, err
 	}
 
+	n := winutil.NewNotifier()
+
 	sw := &Manager{
 		vmName: vmName,
 
@@ -73,6 +78,7 @@ func NewVMManager(vmName string) (*Manager, error) {
 		vsMgr:     vsMgr,
 		imageMgr:  imageMgr,
 		Kvp:       nil,
+		n:         n,
 	}
 	return sw, nil
 }

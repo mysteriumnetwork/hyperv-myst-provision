@@ -90,6 +90,10 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
+			//n := winutil.NewNotifier()
+			//n.WaitForIPChange()
+			//return
+
 			platformMgr, _ := platform.NewManager()
 			ok, err := platformMgr.Features()
 			if err != nil {
@@ -102,6 +106,31 @@ func main() {
 					log.Fatal().Err(err).Msg("Failed to enable HyperV")
 				}
 			}
+
+			//err = func() error {
+			//	m, err := hyperv_wmi.NewVMManager("Myst HyperV Alpine")
+			//	if err != nil {
+			//		return errors.Wrap(err, "NewVMManager")
+			//	}
+			//
+			//	// find external ethernet port and get its device eepPath
+			//	eep, adp, devID, err := m.FindDefaultNetworkAdapter(false)
+			//	if err != nil {
+			//		return errors.Wrap(err, "FindDefaultNetworkAdapter")
+			//	}
+			//	eepPath, err := eep.Path()
+			//	if err != nil {
+			//		return errors.Wrap(err, "Path")
+			//	}
+			//	fmt.Println(eepPath, devID)
+			//
+			//	//WaitForNetworkReady
+			//	m.AdapterHasIPAddress(adp)
+			//
+			//	return nil
+			//}()
+			//fmt.Println(err)
+			//return
 
 			for {
 				fmt.Println("")
