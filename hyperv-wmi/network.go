@@ -30,56 +30,31 @@ func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 // returns: port, adapter, id, error
 func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, *wmi.Result, string, error) {
 
-	// 9    - wifi
-	// 0    - ethernet
-	// abs. - other type
-	nameToType := make(map[string]int32)
-	mediaTypes, err := m.wmi.Gwmi("MSNdis_PhysicalMediumType", []string{}, nil)
-	if err != nil {
-		return nil, nil, "", errors.Wrap(err, "Get")
-	}
-	el, _ := mediaTypes.Elements()
-	for _, v := range el {
-		mt, _ := v.GetProperty("NdisPhysicalMediumType")
-		in, _ := v.GetProperty("InstanceName")
-		fmt.Println(mt.Value(), in.Value())
-		nameToType[in.Value().(string)] = mt.Value().(int32)
-	}
-
 	qParams := []wmi.Query{
-		&wmi.AndQuery{wmi.QueryFields{Key: "PhysicalAdapter", Value: true, Type: wmi.Equals}},
+		&wmi.OrQuery{wmi.QueryFields{Key: "NetConnectionID", Value: "Ethernet", Type: wmi.Equals}},
+		&wmi.OrQuery{wmi.QueryFields{Key: "NetConnectionID", Value: "Wi-Fi", Type: wmi.Equals}},
 	}
 	adapters, err := m.cimv2.Gwmi("Win32_NetworkAdapter", []string{}, qParams)
 	if err != nil {
 		return nil, nil, "", errors.Wrap(err, "Get")
 	}
-	el, _ = adapters.Elements()
+	el, _ := adapters.Elements()
 	for _, adp := range el {
 		id_, _ := adp.GetProperty("GUID")
 		name_, _ := adp.GetProperty("Name")
-		servName_, _ := adp.GetProperty("ServiceName")
+		netConnectionID_, _ := adp.GetProperty("NetConnectionID")
 
-		id, name, servName := id_.Value().(string), name_.Value().(string), servName_.Value().(string)
-		if strings.HasPrefix(strings.ToLower(servName), "vm") {
-			continue
-		}
+		id, name, netConnectionID := id_.Value().(string), name_.Value().(string), netConnectionID_.Value().(string)
+		log.Debug().Msgf("FindDefaultNetworkAdapter> %v %v %v", id, name, netConnectionID)
 
-		connType, ok := nameToType[name]
-		if !ok || connType == 10 {
-			// skip bluetooth
-			continue
-		}
-		log.Print("dbg >", id, name, connType, ok, servName)
-		if (preferEthernet && connType == 0) || (!preferEthernet && connType != 0) {
+		if (preferEthernet && netConnectionID == "Ethernet") || (!preferEthernet && netConnectionID != "Ethernet") {
 			ap, err := m.findNetworkAdapterPortByID(id, preferEthernet)
-			log.Print("ap>", ap, id, err)
 			if err == nil {
 				return ap, adp, id, nil
 			}
 		}
 	}
 
-	// TODO: fallback to wifi
 	return nil, nil, "", nil
 }
 
