@@ -23,6 +23,7 @@ Select 'advanced' tab, disable packets coalescing.
 ## Report test results.
 Please share your experience.
 
-1. Did the Node start and open the UI page ? Yes / No ____
-2. Type of network connection used: Wifi / Ethernet ____
-3. Did you experience issues with network connection (e.g. slow download) ? What one ? ____
+1. OS version and build (e.g. Windows 10 version 20H2)  _____
+2. Did the Node start and open the UI page ? Yes / No ____
+3. Type of network connection used: Wifi / Ethernet ____
+4. Did you experience any issues with network connection during the test (e.g. slow download) ? What one ? ____
