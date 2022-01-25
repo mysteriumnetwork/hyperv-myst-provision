@@ -19,6 +19,7 @@ type ImportOptions struct {
 	VMBootTimeoutMinutes int64
 	KeystoreDir          string
 	PreferEthernet       bool
+	AdapterID            string
 }
 
 func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
@@ -29,7 +30,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 			return errors.Wrap(err, "RemoveVM")
 		}
 	}
-	if err := m.ModifySwitchSettings(opt.PreferEthernet); err != nil {
+	if err := m.ModifySwitchSettings(opt.PreferEthernet, opt.AdapterID); err != nil {
 		return errors.Wrap(err, "ModifySwitchSettings")
 	}
 

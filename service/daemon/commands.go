@@ -18,14 +18,12 @@
 package daemon
 
 const (
-	commandVersion = "version"
-
-	commandPing       = "ping"
-	commandStopVM     = "stop-vm"
-	commandStartVM    = "start-vm"
-	commandImportVM   = "import-vm"
-	commandGetKvp     = "get-kvp"
-	commandGetVMState = "get-vm-state"
-
-	// wait for adapter is bound ?
+	CommandVersion     = "version"
+	CommandPing        = "ping"
+	CommandStopVM      = "stop-vm"
+	CommandStartVM     = "start-vm"
+	CommandImportVM    = "import-vm"
+	CommandGetKvp      = "get-kvp"
+	CommandGetVMState  = "get-vm-state"
+	CommandGetAdapters = "get-adapters"
 )

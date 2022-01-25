@@ -1,11 +1,13 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +18,7 @@ func PanicHandler(threadName string) {
 	if panic := recover(); panic != nil {
 
 		dir, _ := os.Getwd()
+		fmt.Printf("Panic: %v\n", panic)
 		fmt.Printf("Stacktrace %s: %s\n", threadName, debug.Stack())
 		fname := fmt.Sprintf("%s/launcher_trace_%d.txt", dir, time.Now().Unix())
 		f, err := os.Create(fname)
@@ -54,4 +57,10 @@ func ThisPath() (string, error) {
 		return "", err
 	}
 	return thisPath, nil
+}
+
+func ReadConsole() string {
+	b, _ := bufio.NewReader(os.Stdin).ReadBytes('\n')
+	k := strings.TrimSuffix(string(b), "\r\n")
+	return k
 }

@@ -14,7 +14,8 @@ import (
 )
 
 type Config struct {
-	Enabled bool `json:"enabled"`
+	Enabled   bool   `json:"enabled"`
+	AdapterID string `json:"adapter-id"`
 }
 
 func (c *Config) getDefaultValues() {

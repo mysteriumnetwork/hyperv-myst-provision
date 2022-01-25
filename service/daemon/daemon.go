@@ -71,44 +71,45 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 		op := strings.ToLower(m["cmd"].(string))
 
 		switch op {
-		case commandVersion:
+		case CommandVersion:
 			answer.ok_(nil)
 
-		case commandPing:
+		case CommandPing:
 			answer.pong_()
 
-		case commandStopVM:
+		case CommandStopVM:
 			err = d.mgr.StopVM()
 			if err != nil {
-				log.Err(err).Msgf("%s failed", commandStopVM)
+				log.Err(err).Msgf("%s failed", CommandStopVM)
 				answer.err_(err)
 			} else {
 				err := d.mgr.RemoveVM()
 				if err != nil {
-					log.Err(err).Msgf("%s failed", commandStopVM)
+					log.Err(err).Msgf("%s failed", CommandStopVM)
 					answer.err_(err)
 				}
 				err = d.mgr.RemoveSwitch()
 				if err != nil {
-					log.Err(err).Msgf("%s failed", commandStopVM)
+					log.Err(err).Msgf("%s failed", CommandStopVM)
 					answer.err_(err)
 				}
 				answer.ok_(nil)
 			}
 
-		case commandStartVM:
+		case CommandStartVM:
 			err := d.mgr.StartVM()
 			if err != nil {
-				log.Err(err).Msgf("%s failed", commandStartVM)
+				log.Err(err).Msgf("%s failed", CommandStartVM)
 				answer.err_(err)
 			} else {
 				answer.ok_(nil)
 			}
 
-		case commandImportVM:
+		case CommandImportVM:
 			reportProgress, _ := m["report-progress"].(bool)
 			preferEthernet, _ := m["prefer-ethernet"].(bool)
 			keystoreDir, _ := m["keystore"].(string)
+			adapterID, _ := m["adapter-id"].(string)
 
 			if d.importInProgress {
 				// prevent parallel runs of import-vm
@@ -117,7 +118,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				var fn provisioner.ProgressFunc
 				if reportProgress {
 					fn = func(progress int) {
-						answer.progress_(commandImportVM, progress)
+						answer.progress_(CommandImportVM, progress)
 					}
 				}
 				d.importInProgress = true
@@ -127,9 +128,10 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					VMBootTimeoutMinutes: 1,
 					KeystoreDir:          keystoreDir,
 					PreferEthernet:       preferEthernet,
+					AdapterID:            adapterID,
 				}, fn)
 				if err != nil {
-					log.Err(err).Msgf("%s failed", commandImportVM)
+					log.Err(err).Msgf("%s failed", CommandImportVM)
 					answer.err_(err)
 				} else {
 					answer.ok_(nil)
@@ -137,15 +139,37 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				d.importInProgress = false
 			}
 
-		case commandGetVMState:
+		case CommandGetAdapters:
+			l, err := d.mgr.SelectAdapter()
+			if err != nil {
+				log.Err(err).Msgf("%s failed", op)
+				answer.err_(err)
+			} else {
+				answer.ok_(l)
+			}
+
+		//case CommandSetAdapter:
+		//	adapterID, _ := m["adapter-adapterID"].(string)
+		//	d.cfg.AdapterID = adapterID
+		//	d.cfg.Save()
+		//
+		//	l, err := d.mgr.SelectAdapter()
+		//	if err != nil {
+		//		log.Err(err).Msgf("%s failed", op)
+		//		answer.err_(err)
+		//	} else {
+		//		answer.ok_(l)
+		//	}
+
+		case CommandGetVMState:
 			var m map[string]interface{}
 			m["enabled"] = d.cfg.Enabled
 			answer.ok_(m)
 
-		case commandGetKvp:
+		case CommandGetKvp:
 			err = d.mgr.GetGuestKVP()
 			if err != nil {
-				log.Err(err).Msgf("%s failed", commandGetKvp)
+				log.Err(err).Msgf("%s failed", op)
 				answer.err_(err)
 			} else {
 				answer.ok_(d.mgr.Kvp)

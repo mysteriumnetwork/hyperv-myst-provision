@@ -2,15 +2,17 @@ package client
 
 import (
 	"encoding/json"
-	"log"
+	//"log"
 	"net"
+
+	"github.com/rs/zerolog/log"
 
 	hyperv_wmi "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
 )
 
 func SendCommand(conn net.Conn, m hyperv_wmi.KVMap) hyperv_wmi.KVMap {
 	b, _ := json.Marshal(m)
-	log.Println("send > " + string(b))
+	log.Debug().Msgf("send > %v", string(b))
 	conn.Write(b)
 	conn.Write([]byte("\n"))
 
@@ -22,7 +24,7 @@ func SendCommand(conn net.Conn, m hyperv_wmi.KVMap) hyperv_wmi.KVMap {
 		if n > 0 {
 			var res map[string]interface{}
 			payload := out[:n-1]
-			log.Println("rcv <", string(payload))
+			log.Debug().Msgf("rcv < %v", string(payload))
 
 			json.Unmarshal(payload, &res)
 			if res["resp"] == "error" || res["resp"] == "pong" {

@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"os"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/Microsoft/go-winio"
@@ -56,7 +55,12 @@ func main() {
 		log.Info().Msg("Supervisor installed")
 
 	} else if *flags.FlagUninstall {
-		disableVM()
+		conn, err := connect()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Connect")
+		}
+		defer conn.Close()
+		disableVM(conn)
 
 		log.Info().Msg("Uninstalling MysteriumVMSvc")
 		if err := install.Uninstall(); err != nil {
@@ -65,7 +69,13 @@ func main() {
 		log.Info().Msg("MysteriumVMSvc uninstalled")
 
 	} else if *flags.FlagImportVM {
-		enableVM(*flags.FlagImportVMPreferEthernet)
+		conn, err := connect()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Connect")
+		}
+		defer conn.Close()
+
+		enableVM(conn, *flags.FlagImportVMPreferEthernet, "")
 
 	} else if *flags.FlagWinService {
 		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
@@ -91,8 +101,12 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
-			//n := winutil.NewNotifier()
-			//n.WaitForIPChange()
+			//m, err := hyperv_wmi.NewVMManager("Myst HyperV Alpine")
+			//if err != nil {
+			//	fmt.Println(err)
+			//	return
+			//}
+			//m.SelectAdapter()
 			//return
 
 			platformMgr, _ := platform.NewManager()
@@ -110,38 +124,72 @@ func main() {
 
 			for {
 				fmt.Println("")
+				fmt.Println("Select action")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("[1] Enable node VM (use Ethernet connection)")
-				fmt.Println("[2] Enable node VM (use Wifi connection)")
-				fmt.Println("[3] Disable node VM")
-				fmt.Println("[4] Exit")
+				fmt.Println("1  Enable node VM (use Ethernet connection)")
+				fmt.Println("2  Enable node VM (use Wifi connection)")
+				fmt.Println("3  Enable node VM (select adapter manually)")
+				fmt.Println("4  Disable node VM")
+				fmt.Println("5  Exit")
 				fmt.Print("\n> ")
-				b, _ := bufio.NewReader(os.Stdin).ReadBytes('\n')
-				k := strings.TrimSuffix(string(b), "\r\n")
+				k := util.ReadConsole()
+				if k == "5" {
+					return
+				}
+
+				var conn net.Conn
 				switch k {
-				case "1", "2":
-					err := installSvc()
+				case "1", "2", "3", "4":
+					err = installSvc()
 					if err != nil {
 						log.Fatal().Err(err).Msg("Install service")
 					}
-					err = enableVM(k == "1")
+					conn, err = connect()
+					if err != nil {
+						log.Fatal().Err(err).Msg("Connect")
+					}
+				}
+
+				switch k {
+				case "1", "2":
+					err = enableVM(conn, k == "1", "")
 					if err != nil {
 						log.Fatal().Err(err).Msg("Enable VM")
 					}
 
 				case "3":
-					err := installSvc()
+					ID, err := selectAdapter(conn)
 					if err != nil {
-						log.Fatal().Err(err).Msg("Install service")
+						log.Fatal().Err(err).Msg("Select adapter")
 					}
-					disableVM()
+					err = enableVM(conn, false, ID)
+					if err != nil {
+						log.Fatal().Err(err).Msg("Enable VM")
+					}
 
 				case "4":
+					disableVM(conn)
+
+				case "5":
 					return
 				}
 			}
 		}
 	}
+}
+
+func connect() (net.Conn, error) {
+	var conn net.Conn
+	err := utils.Retry(3, time.Second, func() error {
+		var err error
+		conn, err = winio.DialPipe(consts.Sock, nil)
+		return err
+	})
+	if err != nil {
+		log.Err(err).Msg("error listening")
+		return nil, err
+	}
+	return conn, nil
 }
 
 func installSvc() error {
@@ -160,18 +208,7 @@ func installSvc() error {
 	return nil
 }
 
-func enableVM(preferEthernet bool) error {
-	var conn net.Conn
-	err := utils.Retry(3, time.Second, func() error {
-		var err error
-		conn, err = winio.DialPipe(consts.Sock, nil)
-		return err
-	})
-	if err != nil {
-		log.Err(err).Msg("error listening")
-		return err
-	}
-	defer conn.Close()
+func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 
 	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
 	if err != nil {
@@ -180,10 +217,11 @@ func enableVM(preferEthernet bool) error {
 	}
 	keystorePath := homeDir + `\.mysterium\keystore`
 	cmd := hyperv_wmi.KVMap{
-		"cmd":             "import-vm",
+		"cmd":             daemon.CommandImportVM,
 		"keystore":        keystorePath,
 		"report-progress": true,
 		"prefer-ethernet": preferEthernet,
+		"adapter-id":      ID,
 	}
 	res := client.SendCommand(conn, cmd)
 	if res["resp"] == "error" {
@@ -192,7 +230,7 @@ func enableVM(preferEthernet bool) error {
 	}
 
 	cmd = hyperv_wmi.KVMap{
-		"cmd": "get-kvp",
+		"cmd": daemon.CommandGetKvp,
 	}
 	kv := client.SendCommand(conn, cmd)
 
@@ -212,25 +250,45 @@ func enableVM(preferEthernet bool) error {
 	return nil
 }
 
-func disableVM() {
-	var conn net.Conn
-	err := utils.Retry(3, time.Second, func() error {
-		var err error
-		conn, err = winio.DialPipe(consts.Sock, nil)
-		return err
-	})
-	if err != nil {
-		log.Print("error listening")
-		return
-	}
-	defer conn.Close()
-
+func disableVM(conn net.Conn) {
 	cmd := hyperv_wmi.KVMap{
-		"cmd": "stop-vm",
+		"cmd": daemon.CommandStopVM,
 	}
 	res := client.SendCommand(conn, cmd)
 	if res["resp"] == "error" {
 		fmt.Println("error:", res["err"])
 		return
 	}
+}
+
+func selectAdapter(conn net.Conn) (string, error) {
+	cmd := hyperv_wmi.KVMap{
+		"cmd": daemon.CommandGetAdapters,
+	}
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		fmt.Println("error:", res["err"])
+		return "", errors.New(fmt.Sprint("error:", res["err"]))
+	}
+
+	fmt.Println("Select adapter")
+	fmt.Println("----------------------------------------------")
+	l := res["data"].([]interface{})
+	for k, v := range l {
+		fmt.Println(k+1, "", v.(map[string]interface{})["Name"])
+	}
+	fmt.Print("\n> ")
+	k_ := util.ReadConsole()
+	k, err := strconv.ParseInt(k_, 10, 8)
+	if err != nil {
+		log.Err(err).Msg("ParseInt error")
+		return "", err
+	}
+	if k < 0 || k > int64(len(l)) {
+		log.Err(err).Msg("Wrong number")
+		return "", errors.New("Wrong number")
+	}
+	ID := l[k-1].(map[string]interface{})["ID"].(string)
+	fmt.Println(k, ID)
+	return ID, nil
 }

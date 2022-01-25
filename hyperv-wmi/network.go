@@ -25,10 +25,54 @@ func (m *Manager) GetSwitch(switchName string) (*wmi.Result, error) {
 	return m.con.GetOne(VMSwitchClass, []string{}, qParams)
 }
 
+type Adapter struct {
+	ID   string
+	Name string
+}
+
+func (m *Manager) SelectAdapter() ([]Adapter, error) {
+	qParams := []wmi.Query{
+		&wmi.OrQuery{wmi.QueryFields{Key: "NetConnectionID", Value: "Ethernet", Type: wmi.Equals}},
+		&wmi.OrQuery{wmi.QueryFields{Key: "NetConnectionID", Value: "Wi-Fi", Type: wmi.Equals}},
+	}
+	adapters, err := m.cimv2.Gwmi("Win32_NetworkAdapter", []string{}, qParams)
+	if err != nil {
+		return nil, errors.Wrap(err, "Get")
+	}
+	el, err := adapters.Elements()
+	if err != nil {
+		return nil, errors.Wrap(err, "Elements")
+	}
+
+	var list []Adapter
+	for _, adp := range el {
+		id_, _ := adp.GetProperty("GUID")
+		name_, _ := adp.GetProperty("Name")
+		netConnectionID_, _ := adp.GetProperty("NetConnectionID")
+
+		id, name, netConnectionID := id_.Value().(string), name_.Value().(string), netConnectionID_.Value().(string)
+		fmt.Println(id, name, netConnectionID)
+		list = append(list, Adapter{
+			ID:   id,
+			Name: name,
+		})
+	}
+	return list, nil
+}
+
 // Find a network adapter with minimum metric and use it for virtual network switch
 // prefer active
 // returns: port, adapter, id, error
-func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, *wmi.Result, string, error) {
+func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool, adapterID string) (*wmi.Result, *wmi.Result, string, error) {
+	log.Info().Msgf("FindDefaultNetworkAdapter> %v %v", preferEthernet, adapterID)
+
+	if adapterID != "" {
+		port, err := m.findNetworkAdapterPortByID(adapterID, false)
+		if err != nil {
+			return nil, nil, "", errors.Wrap(err, "findNetworkAdapterPortByID")
+		}
+		return port, nil, adapterID, nil
+	}
 
 	qParams := []wmi.Query{
 		&wmi.OrQuery{wmi.QueryFields{Key: "NetConnectionID", Value: "Ethernet", Type: wmi.Equals}},
@@ -59,22 +103,27 @@ func (m *Manager) FindDefaultNetworkAdapter(preferEthernet bool) (*wmi.Result, *
 }
 
 func (m *Manager) findNetworkAdapterPortByID(id string, preferEthernet bool) (*wmi.Result, error) {
-	log.Print("findNetworkAdapterPortByID>", id, preferEthernet)
+	log.Info().Msgf("findNetworkAdapterPortByID> %v %v", id, preferEthernet)
 
 	qParams := []wmi.Query{
 		//&wmi.AndQuery{wmi.QueryFields{Key: "EnabledState", Value: StateEnabled, Type: wmi.Equals}},
 		&wmi.AndQuery{wmi.QueryFields{Key: "DeviceID", Value: "Microsoft:" + id, Type: wmi.Equals}},
 	}
-
 	eep, err := m.con.GetOne(network.ExternalPort, []string{}, qParams)
+	log.Info().Msgf(">>> %v %v", eep, err)
+
 	if !errors.Is(err, wmi.ErrNotFound) && err != nil {
 		return nil, err
 	}
-
-	// skip if not ethernet and try wifi
-	if preferEthernet && !errors.Is(err, wmi.ErrNotFound) {
+	if err == nil {
 		return eep, err
 	}
+
+	//// skip if not ethernet and try wifi
+	//if preferEthernet && !errors.Is(err, wmi.ErrNotFound) {
+	//	return eep, err
+	//}
+
 	eep, err = m.con.GetOne(WifiPort, []string{}, qParams)
 	return eep, err
 }
@@ -151,12 +200,12 @@ func (m *Manager) WaitForExternalNetworkIsReady(extAdapter *wmi.Result) error {
 }
 
 // Modify switch (set external connection) or create a new one
-func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
-	log.Info().Msgf("ModifySwitchSettings %v", preferEthernet)
+func (m *Manager) ModifySwitchSettings(preferEthernet bool, adapterID string) error {
+	log.Info().Msgf("ModifySwitchSettings %v", preferEthernet, adapterID)
 
 	sw, err := m.GetSwitch(defaultSwitchName)
 	if errors.Is(err, wmi.ErrNotFound) {
-		err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet)
+		err := m.CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet, adapterID)
 		return err
 	}
 	if err != nil && !errors.Is(err, wmi.ErrNotFound) {
@@ -169,7 +218,7 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 	fmt.Println(swPath)
 
 	// find external ethernet port and get its device eepPath
-	eep, extAdapter, devID, err := m.FindDefaultNetworkAdapter(preferEthernet)
+	eep, _, devID, err := m.FindDefaultNetworkAdapter(preferEthernet, adapterID)
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
@@ -178,7 +227,6 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 		return errors.Wrap(err, "Path")
 	}
 
-	_ = extAdapter
 	//err = m.WaitForExternalNetworkIsReady(extAdapter)
 	//if err != nil {
 	//	return err
@@ -287,7 +335,7 @@ func (m *Manager) ModifySwitchSettings(preferEthernet bool) error {
 	return m.waitForJob(jobState, jobPath)
 }
 
-func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet bool) error {
+func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet bool, adapterID string) error {
 	// check if the switch exists
 	_, err := m.GetSwitch(defaultSwitchName)
 	if err == nil {
@@ -313,7 +361,7 @@ func (m *Manager) CreateExternalNetworkSwitchIfNotExistsAndAssign(preferEthernet
 		return errors.Wrap(err, "GetText")
 	}
 
-	eep, _, _, err := m.FindDefaultNetworkAdapter(preferEthernet)
+	eep, _, _, err := m.FindDefaultNetworkAdapter(preferEthernet, adapterID)
 	if err != nil {
 		return errors.Wrap(err, "FindDefaultNetworkAdapter")
 	}
