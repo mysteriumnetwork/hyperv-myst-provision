@@ -61,6 +61,12 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "WaitUntilBoot")
 	}
 
+	err = m.copyEnvMyst()
+	if err != nil {
+		return errors.Wrap(err, "copyEnvMyst")
+	}
+
+	// copy keystore
 	keystorePath := opt.KeystoreDir
 	if opt.KeystoreDir == "" {
 		homeDir, err := os.UserHomeDir()
@@ -89,4 +95,17 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 	}
 
 	return nil
+}
+
+func (m *Manager) copyEnvMyst() error {
+	tempDir := os.TempDir()
+	envMystPath := filepath.Join(tempDir, ".env.myst")
+	log.Println("envMystPath  >", envMystPath)
+
+	txt := []byte("LAUNCHER=vmh-0.0.1/windows")
+	err := os.WriteFile(envMystPath, txt, 0644)
+	if err != nil {
+		return errors.Wrap(err, "WriteFile")
+	}
+	return m.CopyFile(envMystPath, "/")
 }

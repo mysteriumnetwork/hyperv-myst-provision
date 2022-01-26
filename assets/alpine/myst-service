@@ -1,10 +1,19 @@
 #!/sbin/openrc-run
+
+while true
+do
+    if [ -f /.env.myst ]; then
+      break
+    fi
+    sleep 5
+done
+source /.env.myst
+
 name="Mysterium Network Node"
 command="myst"
-command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard"
+command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard --launcher.ver=$LAUNCHER"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
-#additional sections
 
 depend() {
         need net
