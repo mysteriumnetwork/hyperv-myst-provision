@@ -19,3 +19,5 @@ rc-update add hv_vss_daemon default
 # start crashed services periodically
 echo '* * * * * openrc' >> /etc/crontabs/root
 rc-update add crond
+
+sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
