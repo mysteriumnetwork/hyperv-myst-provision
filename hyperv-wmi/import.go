@@ -61,11 +61,6 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "WaitUntilBoot")
 	}
 
-	err = m.copyEnvMyst()
-	if err != nil {
-		return errors.Wrap(err, "copyEnvMyst")
-	}
-
 	// copy keystore
 	keystorePath := opt.KeystoreDir
 	if opt.KeystoreDir == "" {
@@ -84,6 +79,11 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 	})
 	if err != nil {
 		return errors.Wrap(err, "Walk")
+	}
+
+	err = m.copyEnvMyst()
+	if err != nil {
+		return errors.Wrap(err, "copyEnvMyst")
 	}
 
 	err = m.WaitUntilGotIP(
