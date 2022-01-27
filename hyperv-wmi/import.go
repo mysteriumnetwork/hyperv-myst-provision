@@ -81,17 +81,20 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "Walk")
 	}
 
-	err = m.copyEnvMyst()
-	if err != nil {
-		return errors.Wrap(err, "copyEnvMyst")
-	}
-
+	//err = m.copyEnvMyst()
+	//if err != nil {
+	//	return errors.Wrap(err, "copyEnvMyst")
+	//}
 	err = m.WaitUntilGotIP(
 		time.Duration(opt.VMBootPollSeconds)*time.Second,
 		time.Duration(opt.VMBootTimeoutMinutes)*time.Minute,
 	)
+	//if err != nil {
+	//	return errors.Wrap(err, "WaitUntilGotIP")
+	//}
+	err = m.copyEnvMyst()
 	if err != nil {
-		return errors.Wrap(err, "WaitUntilGotIP")
+		return errors.Wrap(err, "copyEnvMyst")
 	}
 
 	return nil
@@ -102,7 +105,7 @@ func (m *Manager) copyEnvMyst() error {
 	envMystPath := filepath.Join(tempDir, ".env.myst")
 	log.Println("envMystPath  >", envMystPath)
 
-	txt := []byte("LAUNCHER=vmh-0.0.1/windows")
+	txt := []byte("LAUNCHER=vmh-0.0.1/windows\n")
 	err := os.WriteFile(envMystPath, txt, 0644)
 	if err != nil {
 		return errors.Wrap(err, "WriteFile")

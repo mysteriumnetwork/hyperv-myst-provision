@@ -484,7 +484,7 @@ func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
 			}
 
 			if time.Now().After(deadline) {
-				log.Printf("time out while waiting for VM `%s` to boot\n", m.vmName)
+				log.Printf("time out while waiting for VM `%s` to get an IP\n", m.vmName)
 				return errors.New("Timeout")
 			}
 		}
