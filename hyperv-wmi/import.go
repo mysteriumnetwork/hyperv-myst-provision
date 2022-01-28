@@ -70,6 +70,10 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		}
 		keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
 	}
+	if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
+		return errors.Wrap(err, "Keystore not found")
+	}
+
 	log.Println("keystorePath >", keystorePath)
 	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
 		if info.IsDir() {

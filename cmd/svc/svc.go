@@ -109,13 +109,12 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
-			//m, err := hyperv_wmi.NewVMManager("Myst HyperV Alpine")
-			//if err != nil {
-			//	fmt.Println(err)
-			//	return
-			//}
-			//m.SelectAdapter()
-			//return
+			homeDir, _ := os.UserHomeDir()
+			keystorePath := fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
+			if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
+				log.Info().Msg("Keystore not found")
+				return
+			}
 
 			platformMgr, _ := platform.NewManager()
 			ok, err := platformMgr.Features()
@@ -131,10 +130,10 @@ func main() {
 			}
 
 			for {
-				fmt.Println("Select action")
+				fmt.Println("Select an action")
 				fmt.Println("----------------------------------------------")
 				fmt.Println("1  Enable node VM and use Ethernet connection")
-				fmt.Println("2  Enable node VM and use Wifi connection (experimental)")
+				fmt.Println("2  Enable node VM and use Wifi connection (experimental; see the README)")
 				fmt.Println("3  Enable node VM (select adapter manually)")
 				fmt.Println("4  Disable node VM")
 				fmt.Println("5  Exit")
