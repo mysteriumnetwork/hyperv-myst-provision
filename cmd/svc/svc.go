@@ -31,6 +31,14 @@ func main() {
 	defer util.PanicHandler("main")
 	flags.Parse()
 
+	logOpts := logconfig.LogOptions{
+		LogLevel: "info",
+		Filepath: "",
+	}
+	if err := logconfig.Configure(logOpts); err != nil {
+		log.Fatal().Err(err).Msg("Failed to configure logging")
+	}
+
 	workDir, err := winutil.AppDataDir()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error getting AppDataDir: " + err.Error())
@@ -123,11 +131,10 @@ func main() {
 			}
 
 			for {
-				fmt.Println("")
 				fmt.Println("Select action")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("1  Enable node VM (use Ethernet connection)")
-				fmt.Println("2  Enable node VM (use Wifi connection)")
+				fmt.Println("1  Enable node VM and use Ethernet connection")
+				fmt.Println("2  Enable node VM and use Wifi connection (experimental)")
 				fmt.Println("3  Enable node VM (select adapter manually)")
 				fmt.Println("4  Disable node VM")
 				fmt.Println("5  Exit")
