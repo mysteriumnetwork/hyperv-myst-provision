@@ -7,7 +7,7 @@ Purpose of dual-mode:
 
 ## Installation
 * Make sure you have a keystore directory in the users profile: press Win-R and enter %USERPROFILE%\\.mysterium
-* Download [myst_vm_helper](https://github.com/mysteriumnetwork/hyperv-myst-provision/releases/download/latest/myst-vm-helper.exe)
+* Download [myst_vm_helper](https://github.com/mysteriumnetwork/hyperv-myst-provision/releases/latest/download/myst-vm-helper.exe)
 * Launch the executable
 * Select item 1 or 2 to enable Mysterium Node.
    Note that Wifi support is experimental.
