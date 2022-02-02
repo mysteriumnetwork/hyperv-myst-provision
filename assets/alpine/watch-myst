@@ -4,7 +4,7 @@
 #directory="$2"
 #file="$3"
 
-if [ "$1" = "w" ] && [ "$2" = "/.env.myst" ]; then
+if [ "$1" = "w" ] && [ "$2" = "/tmp/.env.myst" ]; then
     #/etc/init.d/myst-service restart
     openrc
 fi

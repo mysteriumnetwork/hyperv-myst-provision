@@ -1,12 +1,12 @@
 #!/sbin/openrc-run
 
-if [ -f /.env.myst ]; then
-  source /.env.myst
+if [ -f /tmp/.env.myst ]; then
+  source /tmp/.env.myst
 fi
 
 name="Mysterium Network Node"
 command="myst"
-command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard --launcher.ver=$LAUNCHER"
+command_args="--keystore.lightweight --local-service-discovery=false --launcher.ver=$LAUNCHER service --agreed-terms-and-conditions"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
 
@@ -15,8 +15,8 @@ depend() {
 }
 
 start_pre() {
-  if ! [ -f /.env.myst ]; then
-    echo "Error: /.env.myst is absent" 
+  if ! [ -f /tmp/.env.myst ]; then
+    echo "Error: /tmp/.env.myst is absent"
     exit 1
   fi
 

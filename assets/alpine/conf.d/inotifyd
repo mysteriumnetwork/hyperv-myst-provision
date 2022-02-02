@@ -1,2 +1,2 @@
-INOTIFYD_ARGS="/bin/watch-myst /.env.myst:w"
+INOTIFYD_ARGS="/bin/watch-myst /tmp/.env.myst:w"
 INOTIFYD_USER=root
