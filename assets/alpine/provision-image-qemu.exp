@@ -104,6 +104,18 @@ put "assets/alpine/myst"
 send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/network/if-up.d/myst\n"
 expect "*#"
 
+put "assets/alpine/conf.d/inotifyd"
+send "mv /tmp/1.sh /etc/conf.d/inotifyd\n"
+expect "*#"
+
+put "assets/alpine/inotifyd"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/init.d/inotifyd; rc-update add inotifyd default\n"
+expect "*#"
+
+put "assets/alpine/watch-myst"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /bin/watch-myst\n"
+expect "*#"
+
 send "rm /var/log/messages\n"
 expect "*#"
 

@@ -114,5 +114,5 @@ func (m *Manager) copyEnvMyst() error {
 	if err != nil {
 		return errors.Wrap(err, "WriteFile")
 	}
-	return m.CopyFile(envMystPath, "/tmp/")
+	return m.CopyFile(envMystPath, "/")
 }
