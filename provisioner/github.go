@@ -10,7 +10,7 @@ import (
 
 var errNotSuccess = errors.New("http response code was not success")
 
-func gitReleases(owner, repo string, pageSize uint) ([]ReleaseResponse, error) {
+func GitReleases(owner, repo string, pageSize uint) ([]ReleaseResponse, error) {
 	s := sling.New().
 		Base("https://api.github.com").
 		Set("Accept", "application/vnd.github.v3+json")

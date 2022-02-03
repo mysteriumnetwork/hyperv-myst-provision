@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
-	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 )
 
 type ImportOptions struct {
@@ -22,7 +20,7 @@ type ImportOptions struct {
 	AdapterID            string
 }
 
-func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error {
+func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc) error {
 	log.Println("ImportVM >", opt)
 
 	if opt.Force {
@@ -34,7 +32,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf provisioner.ProgressFunc) error
 		return errors.Wrap(err, "ModifySwitchSettings")
 	}
 
-	vhdFilePath, err := provisioner.DownloadRelease(provisioner.DownloadOptions{false}, pf)
+	vhdFilePath, err := m.DownloadRelease(DownloadOptions{false, m.cfg}, pf)
 	if err != nil {
 		return err
 	}

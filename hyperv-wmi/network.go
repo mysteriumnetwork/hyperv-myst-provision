@@ -194,7 +194,7 @@ func (m *Manager) WaitForExternalNetworkIsReady(extAdapter *wmi.Result) error {
 			return errors.New("Network wait timeout")
 		}
 
-		m.n.WaitForIPChange()
+		m.notifier.WaitForIPChange()
 	}
 	return nil
 }

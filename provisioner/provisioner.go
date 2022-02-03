@@ -11,7 +11,7 @@ func GetLatestNodeVersion(nodeVersion string) (string, error) {
 		return nodeVersion, nil
 	}
 
-	releases, err := gitReleases("mysteriumnetwork", "node", 1)
+	releases, err := GitReleases("mysteriumnetwork", "node", 1)
 	if err != nil {
 		return "", err
 	}

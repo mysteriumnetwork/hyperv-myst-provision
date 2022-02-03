@@ -18,6 +18,7 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/flags"
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
 	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
@@ -86,7 +87,9 @@ func main() {
 		enableVM(conn, *flags.FlagImportVMPreferEthernet, "")
 
 	} else if *flags.FlagWinService {
-		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName)
+		cfg := new(model.Config)
+		cfg.Read()
+		mgr, err := hyperv_wmi.NewVMManager(*flags.FlagVMName, cfg)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
 		}
@@ -99,7 +102,7 @@ func main() {
 		}
 
 		// Start service
-		svc := daemon.New(mgr)
+		svc := daemon.New(mgr, cfg)
 		if err := svc.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
 			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
 		}

@@ -5,13 +5,14 @@ import (
 	"log"
 	"time"
 
-	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
-
 	"github.com/gabriel-samfira/go-wmi/utils"
 	"github.com/gabriel-samfira/go-wmi/virt/vm"
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
+
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
+	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 )
 
 const (
@@ -19,6 +20,7 @@ const (
 )
 
 type Manager struct {
+	cfg    *model.Config
 	vmName string
 
 	cimv2 *wmi.WMI
@@ -32,11 +34,13 @@ type Manager struct {
 
 	// guest KV map
 	Kvp map[string]interface{}
-	n   winutil.Notifier
+
+	// ethernet notifier
+	notifier winutil.Notifier
 }
 
 // NewVMManager returns a new Manager type
-func NewVMManager(vmName string) (*Manager, error) {
+func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 	cimv2, err := wmi.NewConnection(".", `root\cimv2`)
 	if err != nil {
 		return nil, err
@@ -70,6 +74,7 @@ func NewVMManager(vmName string) (*Manager, error) {
 
 	sw := &Manager{
 		vmName: vmName,
+		cfg:    cfg,
 
 		cimv2:     cimv2,
 		con:       w,
@@ -78,7 +83,7 @@ func NewVMManager(vmName string) (*Manager, error) {
 		vsMgr:     vsMgr,
 		imageMgr:  imageMgr,
 		Kvp:       nil,
-		n:         n,
+		notifier:  n,
 	}
 	return sw, nil
 }

@@ -25,25 +25,24 @@ import (
 	"io"
 	"strings"
 
-	"github.com/rs/zerolog/log"
-
 	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
-	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
+
+	"github.com/rs/zerolog/log"
 )
 
 // Daemon - vm helper process.
 type Daemon struct {
 	mgr              *hyperv_wmi2.Manager
 	importInProgress bool
-	cfg              model.Config
+	cfg              *model.Config
 }
 
 // New creates a new daemon.
-func New(manager *hyperv_wmi2.Manager) Daemon {
+func New(manager *hyperv_wmi2.Manager, cfg *model.Config) Daemon {
 	d := Daemon{mgr: manager}
-	d.cfg.Read()
+	d.cfg = cfg
 
 	return d
 }
@@ -115,7 +114,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 				// prevent parallel runs of import-vm
 				answer.err_(errors.New("in progress"))
 			} else {
-				var fn provisioner.ProgressFunc
+				var fn hyperv_wmi2.ProgressFunc
 				if reportProgress {
 					fn = func(progress int) {
 						answer.progress_(CommandImportVM, progress)
