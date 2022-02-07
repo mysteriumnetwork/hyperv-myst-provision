@@ -1,13 +1,16 @@
 package hyperv_wmi
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +23,13 @@ type ImportOptions struct {
 	AdapterID            string
 }
 
-func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc) error {
+type VMInfo struct {
+	AdapterName  string
+	NodeIdentity string
+	OS           string
+}
+
+func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error {
 	log.Println("ImportVM >", opt)
 
 	if opt.Force {
@@ -28,9 +37,12 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc) error {
 			return errors.Wrap(err, "RemoveVM")
 		}
 	}
-	if err := m.ModifySwitchSettings(opt.PreferEthernet, opt.AdapterID); err != nil {
+
+	na := Adapter{}
+	if err := m.ModifySwitchSettings(opt.PreferEthernet, opt.AdapterID, &na); err != nil {
 		return errors.Wrap(err, "ModifySwitchSettings")
 	}
+	vi.AdapterName = na.Name
 
 	vhdFilePath, err := m.DownloadRelease(DownloadOptions{false, m.cfg}, pf)
 	if err != nil {
@@ -76,6 +88,18 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc) error {
 	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
 		if info.IsDir() {
 			return nil
+		}
+		if info.Name() == "remember.json" {
+			file, _ := ioutil.ReadFile(path)
+			data := struct {
+				Identity struct {
+					Address string `json:"address"`
+				} `json:"identity"`
+			}{}
+			_ = json.Unmarshal([]byte(file), &data)
+			vi.NodeIdentity = data.Identity.Address
+			vi.OS = winutil.GetWindowsVersion()
+
 		}
 		return m.CopyFile(path, "/root/.mysterium/keystore/")
 	})

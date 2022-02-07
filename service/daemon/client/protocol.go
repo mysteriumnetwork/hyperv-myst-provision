@@ -14,7 +14,7 @@ import (
 
 func SendCommand(conn net.Conn, m hyperv_wmi.KVMap) hyperv_wmi.KVMap {
 	b, _ := json.Marshal(m)
-	log.Info().Msgf("send > %v", string(b))
+	log.Debug().Msgf("send > %v", string(b))
 	conn.Write(b)
 	conn.Write([]byte("\n"))
 

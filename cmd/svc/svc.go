@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -237,6 +238,9 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 		log.Error().Msgf("Send command: %s", res["err"])
 		return err
 	}
+	
+	dataStr,_ := json.Marshal(res["data"])
+	fmt.Println("Report:", string(dataStr))
 
 	cmd = hyperv_wmi.KVMap{
 		"cmd": daemon.CommandGetKvp,

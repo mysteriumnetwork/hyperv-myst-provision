@@ -121,6 +121,8 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					}
 				}
 				d.importInProgress = true
+
+				vmInfo := new(hyperv_wmi2.VMInfo)
 				err = d.mgr.ImportVM(hyperv_wmi2.ImportOptions{
 					Force:                true, //false,
 					VMBootPollSeconds:    5,
@@ -128,12 +130,16 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					KeystoreDir:          keystoreDir,
 					PreferEthernet:       preferEthernet,
 					AdapterID:            adapterID,
-				}, fn)
+				}, fn, vmInfo)
 				if err != nil {
-					log.Err(err).Msgf("%s failed", CommandImportVM)
+
+					log.Err(err).Msgf("%s failed >>>>>>>>", CommandImportVM)
 					answer.err_(err)
 				} else {
-					answer.ok_(nil)
+
+					log.Info().Msg(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+					log.Info().Msgf("vmInfo> %v %v ", vmInfo.AdapterName, vmInfo.NodeIdentity)
+					answer.ok_(vmInfo)
 				}
 				d.importInProgress = false
 			}
