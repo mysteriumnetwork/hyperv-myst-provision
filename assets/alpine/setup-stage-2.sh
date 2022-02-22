@@ -15,3 +15,5 @@ rc-update add hv_vss_daemon default
 # rc-service hv_fcopy_daemon start
 # rc-service hv_kvp_daemon start
 # rc-service hv_vss_daemon start
+
+sed -i 's/^ttyS0/#ttyS0/' /etc/inittab

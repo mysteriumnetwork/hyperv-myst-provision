@@ -1,73 +1,29 @@
-# HyperV image provisioning and distribution
+# Dual-mode VPN helper
 
-## Fresh Alpine Install
+Purpose of dual-mode:
+- give a user of dVPN a possibility to become a provider in one click
+- run and control Mysterium node inside VM w/o Docker and its limitations (like NAT)
 
-### HyperV Guest daemons
-This will allow HyperV guest services to interact and obtain information from guest VM (i.e. IP Address)
-```shell
-apk add hvtools
 
-rc-update add hv_fcopy_daemon default
-rc-update add hv_kvp_daemon default
-rc-update add hv_vss_daemon default
+## Installation
+* Make sure you have a keystore directory in the users profile: press Win-R and enter %USERPROFILE%\\.mysterium
+* Download [myst_vm_helper](https://github.com/mysteriumnetwork/hyperv-myst-provision/releases/latest/download/myst-vm-helper.exe)
+* Launch the executable
+* Select item 1 or 2 to enable Mysterium Node.
+   Note that Wifi support is experimental.
+* Wait for the UI page to open in a browser.
 
-rc-service hv_fcopy_daemon start
-rc-service hv_kvp_daemon start
-rc-service hv_vss_daemon start
-```
+## Known problems & solutions
+**Network connection (Wifi) becomes slow after enabling the Node.**
+* Disable packets coalescing on Wifi adapter. Go to Device Manager -> Network adapters -> right-click on Wifi adapter and select 'Properties'
+Select 'advanced' tab, disable packets coalescing.
+* Use a hardware Wifi bridge, a wired connection or a separate Wifi adapter (turn to support for futher instructions).
+ 
+# Feedback
+## Report test results.
+Please share your experience.
 
-### Install MYST
-
-Dependencies
-```shell
-apk add --no-cache iptables ipset ca-certificates openvpn bash sudo openresolv
-```
-
-Prepare environment
-```shell
-wget https://raw.githubusercontent.com/mysteriumnetwork/node/master/bin/helpers/prepare-run-env.sh
-chmod +x ./prepare-run-env.sh
-./prepare-run-env.sh
-```
-
-Download myst node
-```shell
-wget https://github.com/mysteriumnetwork/node/releases/download/0.66.1/myst_linux_amd64.tar.gz
-tar -xvf myst_linux_amd64.tar.gz
-rm myst_linux_amd64.tar.gz
-cp myst /bin/
-```
-
-Copy keystore to `/root/.mysterium/`
-```shell
-???
-```
-
-Register OpenRC service and start it
-```shell
-wget https://raw.githubusercontent.com/mysteriumnetwork/hyperv-myst-provision/master/assets/alpine/myst-service
-mv myst-service /etc/init.d/
-chmod +x /etc/init.d/myst-service
-rc-update add myst-service default
-rc-service myst-service start
-```
-
-All In one:
-
-```shell
-mkdir node
-cd node
-apk add --no-cache iptables ipset ca-certificates openvpn bash sudo openresolv
-wget https://raw.githubusercontent.com/mysteriumnetwork/node/master/bin/helpers/prepare-run-env.sh
-chmod +x ./prepare-run-env.sh
-./prepare-run-env.sh
-wget https://github.com/mysteriumnetwork/node/releases/download/0.67.0/myst_linux_amd64.tar.gz
-tar -xvf myst_linux_amd64.tar.gz
-rm myst_linux_amd64.tar.gz
-cp myst /bin/
-wget https://raw.githubusercontent.com/mysteriumnetwork/hyperv-myst-provision/master/assets/alpine/myst-service
-mv myst-service /etc/init.d/
-chmod +x /etc/init.d/myst-service
-rc-update add myst-service default
-rc-service myst-service start
-```
+1. OS version and build (e.g. Windows 10 version 20H2)  _____
+2. Did the Node start and open the UI page ? Yes / No ____
+3. Type of network connection used: Wifi / Ethernet ____
+4. Did you experience any issues with network connection during the test (e.g. slow download) ? What one ? ____
