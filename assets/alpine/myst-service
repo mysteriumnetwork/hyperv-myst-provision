@@ -1,24 +1,34 @@
 #!/sbin/openrc-run
+
+if [ -f /.env.myst ]; then
+  source /.env.myst
+fi
+
 name="Mysterium Network Node"
 command="myst"
-command_args="--keystore.lightweight service --agreed-terms-and-conditions wireguard"
+command_args="--keystore.lightweight --local-service-discovery=false --launcher.ver=$LAUNCHER service --agreed-terms-and-conditions"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
+supervisor="supervise-daemon"
+#output_log="/var/log/myst.log"
+#error_log="/var/log/myst.err"
 
 depend() {
-        need net
+  need net
 }
 
 start_pre() {
-    while true
-    do
-        l=`find /root/.mysterium/keystore -type f | wc -l`
-        if [ $l -ge 2 ]
-        then
-          logger Keystore found..
-          break
-        fi
-        echo Waiting for keystore..
-        sleep 5
-    done
+  if ! [ -f /.env.myst ]; then
+    echo "Error: /.env.myst is absent"
+    exit 1
+  fi
+
+  l=`find /root/.mysterium/keystore -type f 2>/dev/null | wc -l`
+  if [ $l -ge 2 ]
+  then
+    logger Keystore found..
+  else
+    echo "Error: keystore not found" 
+    exit 1
+  fi
 }

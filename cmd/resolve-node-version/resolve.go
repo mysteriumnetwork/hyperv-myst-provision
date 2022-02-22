@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/itzg/go-flagsfiller"
-	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 	"log"
 	"os"
+
+	"github.com/itzg/go-flagsfiller"
+
+	"github.com/mysteriumnetwork/hyperv-node/provisioner"
 )
 
 type flagsSet struct {
@@ -25,7 +27,6 @@ func flagsParse() {
 	if err := flags.validate(); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 var flags flagsSet

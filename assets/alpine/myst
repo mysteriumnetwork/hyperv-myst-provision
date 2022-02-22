@@ -1,0 +1,7 @@
+#!/bin/sh
+
+logger "ifup $IFACE"
+
+if [ "$IFACE" = "eth0" ]; then
+    /etc/init.d/myst-service start
+fi
