@@ -11,11 +11,15 @@ require (
 	github.com/gonutz/w32 v1.0.0 // indirect
 	github.com/google/glazier v0.0.0-20211213200644-0506347f83ee
 	github.com/itzg/go-flagsfiller v1.6.0
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	github.com/mdlayher/vsock v1.1.1 // indirect
 	github.com/mysteriumnetwork/myst-launcher v0.0.0-20211221075138-6f8014606bf0
 	github.com/mysteriumnetwork/node v0.0.0-20220104164347-5ded05b0ebf0 // indirect
+	github.com/oklog/run v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.0
-	golang.org/x/sys v0.0.0-20211213223007-03aa0b5f6827
+	github.com/sevlyar/go-daemon v0.1.5
+	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
 )
 
 replace (
