@@ -3,36 +3,45 @@ package utils
 import (
 	"log"
 	"os/exec"
+	"time"
 )
 
 //
-// Runner
+// ProcessRunner
 // keeps a command running, restarts it if it fails
 //
 
-type Runner struct {
-	stop chan struct{}
-	done chan error
-	cmd  *exec.Cmd
+type ProcessRunner struct {
+	action chan string
+	done   chan error
+	cmd    *exec.Cmd
 
-	name string
-	arg  []string
+	isStopped bool
+	name      string
+	arg       []string
 }
 
-func NewProcessRunner(name string, arg ...string) *Runner {
-	r := new(Runner)
-	r.name = name
-	r.arg = arg
+func NewProcessRunner() *ProcessRunner {
+	log.Println("new runner")
+
+	r := new(ProcessRunner)
 	r.done = make(chan error, 1)
-	r.stop = make(chan struct{}, 1)
+	r.action = make(chan string, 1)
 
 	return r
 }
 
-func (r *Runner) runCmd() error {
+func (r *ProcessRunner) SetArgs(name string, arg ...string) {
+	r.name = name
+	r.arg = arg
+}
+
+func (r *ProcessRunner) runCmd() error {
+	log.Println("run command:", r.name, r.arg)
+
 	r.cmd = exec.Command(r.name, r.arg...)
 	if err := r.cmd.Start(); err != nil {
-		log.Println("Start", err)
+		log.Println("start", err)
 		return err
 	}
 
@@ -42,33 +51,70 @@ func (r *Runner) runCmd() error {
 	return nil
 }
 
-func (r *Runner) Start() error {
+func (r *ProcessRunner) Start() error {
 	if err := r.runCmd(); err != nil {
+		log.Println("runCmd", err)
 		return err
 	}
+	r.isStopped = false
 
 	for {
 		select {
 
 		case err := <-r.done:
 			if err != nil {
-				log.Fatalf("process finished with error = %v", err)
-			}
-			log.Print("process finished successfully")
-
-			if err := r.runCmd(); err != nil {
-				return err
+				log.Printf("process finished with error = %v", err)
+			} else {
+				log.Print("process finished successfully")
 			}
 
-		case <-r.stop:
-			err := r.cmd.Process.Kill()
-			log.Println("stop", err)
-			return nil
+			time.Sleep(2 * time.Second)
+			if !r.isStopped {
+				if err := r.runCmd(); err != nil {
+					return err
+				}
+			}
 
+		case act := <-r.action:
+			switch act {
+			case "shutdown":
+				err := r.cmd.Process.Kill()
+				log.Println("shutdown > kill cmd", err)
+				return nil
+
+			case "stop":
+				r.isStopped = true
+				err := r.cmd.Process.Kill()
+				log.Println("stop >", err)
+
+				// wait process to finish
+				err = <-r.done
+				if err != nil {
+					log.Printf(">>> process finished with error = %v", err)
+				} else {
+					log.Print(">>> process finished successfully")
+				}
+
+			case "start":
+				if r.isStopped == true {
+					r.isStopped = false
+					if err := r.runCmd(); err != nil {
+						log.Print("run cmd error:", err)
+					}
+				}
+			}
 		}
 	}
 }
 
-func (r *Runner) Shutdown() {
-	r.stop <- struct{}{}
+func (r *ProcessRunner) Shutdown() {
+	r.action <- "shutdown"
+}
+
+func (r *ProcessRunner) StopCommand() {
+	r.action <- "stop"
+}
+
+func (r *ProcessRunner) StartCommand() {
+	r.action <- "start"
 }

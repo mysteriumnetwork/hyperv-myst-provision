@@ -5,7 +5,7 @@ if [ -f /.env.myst ]; then
 fi
 
 name="Mysterium Network Node"
-command="myst"
+command="vm-myst-agent"
 command_args="--keystore.lightweight --local-service-discovery=false --launcher.ver=$LAUNCHER service --agreed-terms-and-conditions"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
