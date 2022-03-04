@@ -52,6 +52,7 @@ func (r *ProcessRunner) runCmd() error {
 }
 
 func (r *ProcessRunner) Start() error {
+
 	if err := r.runCmd(); err != nil {
 		log.Println("runCmd", err)
 		return err

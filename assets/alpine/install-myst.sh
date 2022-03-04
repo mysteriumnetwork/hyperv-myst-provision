@@ -9,7 +9,7 @@ fi
 
 mkdir node
 cd node
-apk add --no-cache iptables ipset ca-certificates openvpn bash sudo openresolv
+apk add --no-cache iptables ipset ca-certificates bash sudo openresolv
 wget https://raw.githubusercontent.com/mysteriumnetwork/node/master/bin/helpers/prepare-run-env.sh
 chmod +x ./prepare-run-env.sh
 ./prepare-run-env.sh

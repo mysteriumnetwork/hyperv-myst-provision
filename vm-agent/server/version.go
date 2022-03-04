@@ -11,7 +11,7 @@ import (
 var versionRegex = regexp.MustCompile(`(?i)\s*version: \s*([^\s]*)\s*`)
 
 //
-//returns a node version
+// returns the node version
 // like "1.1.9"
 //
 

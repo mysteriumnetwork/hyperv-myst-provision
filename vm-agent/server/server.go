@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/mdlayher/vsock"
 	"github.com/mysteriumnetwork/hyperv-node/vm-agent/utils"
@@ -85,10 +87,18 @@ func saveEnvMyst() {
 
 func setMystCmdArgs() {
 	pr.SetArgs("/bin/myst", "--keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
+}
 
+func checkKeystore() bool {
+	files, err := ioutil.ReadDir("/root/.mysterium/keystore")
+	if err != nil {
+		return false
+	}
+	return len(files) >= 2
 }
 
 func Serve() {
+
 	version = readEnvMyst()
 	log.Println("version >>>>", version)
 	if version == "" {
@@ -96,7 +106,6 @@ func Serve() {
 	}
 
 	pr = utils.NewProcessRunner()
-	// pr.SetArgs("/bin/myst", "--keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
 	setMystCmdArgs()
 
 	l, err := vsock.Listen(30, nil)
@@ -114,6 +123,11 @@ func Serve() {
 		return
 	}
 	srv := http.Server{}
+
+	// wait for keystotre
+	for checkKeystore() != true {
+		time.Sleep(2 * time.Second)
+	}
 
 	// Shutdown gracefully
 	{
