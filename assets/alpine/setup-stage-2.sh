@@ -16,4 +16,8 @@ rc-update add hv_vss_daemon default
 # rc-service hv_kvp_daemon start
 # rc-service hv_vss_daemon start
 
-sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
+#sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
+
+mkdir /mnt/ext
+mount /dev/sdb /mnt/ext
+cp /mnt/ext/vm-agent /bin/
