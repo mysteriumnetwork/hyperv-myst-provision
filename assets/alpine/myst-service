@@ -3,10 +3,7 @@
 name="Mysterium Network Node"
 command="vm-agent"
 command_args=""
-command_background=true
-pidfile="/run/${RC_SVCNAME}.pid"
-#output_log="/var/log/vm-myst-agent.log"
-#error_log="/var/log/vm-myst-agent.err"
+pidfile="/run/vm-myst-agent.pid"
 
 depend() {
   need net

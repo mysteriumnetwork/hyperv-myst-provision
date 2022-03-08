@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -238,8 +239,8 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 		log.Error().Msgf("Send command: %s", res["err"])
 		return err
 	}
-	
-	dataStr,_ := json.Marshal(res["data"])
+
+	dataStr, _ := json.Marshal(res["data"])
 	fmt.Println("Report:", string(dataStr))
 
 	cmd = hyperv_wmi.KVMap{
@@ -253,6 +254,16 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 		if ok && ip != "" {
 			log.Print("Web UI is at http://" + ip + ":4449")
 			fmt.Println("Web UI is at http://" + ip + ":4449")
+
+			setKV := "http://" + ip + ":8080/set?launcher=vmh-0.0.1/windows"
+			resp, err := http.Get(setKV)
+			if err != nil {
+				log.Err(err).Msg("Send http request")
+				return nil
+			}
+			if resp.Status != "200" {
+				log.Error().Msgf("Status %v: %v", resp.Status, setKV)
+			} 
 
 			time.Sleep(7 * time.Second)
 			util.OpenUrlInBrowser("http://" + ip + ":4449")
