@@ -179,8 +179,13 @@ expect "*#"
 send "rm /var/log/messages\n"
 expect "*#"
 
+put "assets/alpine/update-myst.sh"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /root/update-myst.sh \n"
+expect "*#"
+
 poweroff
 
-# convert
+####
+# convert image
 spawn qemu-img convert ${disk}.qcow2 -O vhdx -o subformat=dynamic ${disk}.vhdx
 expect eof

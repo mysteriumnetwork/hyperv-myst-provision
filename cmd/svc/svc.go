@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -141,16 +140,15 @@ func main() {
 				fmt.Println("2  Enable node VM and use Wifi connection (experimental; see the README)")
 				fmt.Println("3  Enable node VM (select adapter manually)")
 				fmt.Println("4  Disable node VM")
-				fmt.Println("5  Exit")
+				fmt.Println("5  Update node")
+				fmt.Println("")
+				fmt.Println("6  Exit")
 				fmt.Print("\n> ")
 				k := util.ReadConsole()
-				if k == "5" {
-					return
-				}
 
 				var conn net.Conn
 				switch k {
-				case "1", "2", "3", "4":
+				case "1", "2", "3", "4", "5":
 					err = installSvc()
 					if err != nil {
 						log.Fatal().Err(err).Msg("Install service")
@@ -182,6 +180,9 @@ func main() {
 					disableVM(conn)
 
 				case "5":
+					updateNode(conn)
+
+				case "6":
 					return
 				}
 			}
@@ -255,15 +256,10 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 			log.Print("Web UI is at http://" + ip + ":4449")
 			fmt.Println("Web UI is at http://" + ip + ":4449")
 
-			setKV := "http://" + ip + ":8080/set?launcher=vmh-0.0.1/windows"
-			resp, err := http.Get(setKV)
+			err := client.VmAgentSetLauncherVersion(ip)
 			if err != nil {
-				log.Err(err).Msg("Send http request")
 				return nil
 			}
-			if resp.Status != "200" {
-				log.Error().Msgf("Status %v: %v", resp.Status, setKV)
-			} 
 
 			time.Sleep(7 * time.Second)
 			util.OpenUrlInBrowser("http://" + ip + ":4449")
@@ -283,6 +279,20 @@ func disableVM(conn net.Conn) {
 		fmt.Println("error:", res["err"])
 		return
 	}
+}
+
+func updateNode(conn net.Conn) {
+	fmt.Println("updateNode")
+
+	cmd := hyperv_wmi.KVMap{
+		"cmd": daemon.CommandUpdateNode,
+	}
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		fmt.Println("error:", res["err"])
+	}
+	fmt.Println("updateNode", res)
+
 }
 
 func selectAdapter(conn net.Conn) (string, error) {
