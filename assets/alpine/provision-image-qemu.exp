@@ -41,18 +41,18 @@ expect eof
 spawn qemu-img create -f qcow2 ${disk2}.qcow2 2G
 expect eof
 
-#############################################################
+#####################################################################
 # build VM to build vm-agent for Linux Alpine / musl libc
+#####################################################################
 
 # Start the guest VM
 send_user "\nSTAGE 1\n"
 
-#     -enable-kvm \
 spawn qemu-system-x86_64 \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
-     -cdrom ${iso} \
+     -cdrom alpine-virt-3.14.3-x86_64.iso \
      -m 512 \
      -nic user\
      -boot d \
@@ -76,7 +76,6 @@ expect eof
 
 send_user "\nSTAGE 2\n"
 
-#     -enable-kvm \
 spawn qemu-system-x86_64 \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
@@ -101,15 +100,13 @@ send "/tmp/1.sh\n"
 expect "*#"
 poweroff
 
-#############################################################
-# build real VM
-#############################################################
-
+#####################################################################
+# build a real VM
+#####################################################################
 
 # Start the guest VM
 send_user "\nSTAGE 3\n"
 
-#     -enable-kvm \
 spawn qemu-system-x86_64 \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
@@ -136,7 +133,6 @@ poweroff
 
 send_user "\nSTAGE 4\n"
 
-#     -enable-kvm \
 spawn qemu-system-x86_64 \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
