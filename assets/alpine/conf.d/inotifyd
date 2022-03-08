@@ -1,2 +1,0 @@
-INOTIFYD_ARGS="/bin/watch-myst /:w"
-INOTIFYD_USER=root

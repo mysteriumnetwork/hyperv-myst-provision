@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 
@@ -179,6 +180,21 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			} else {
 				answer.ok_(d.mgr.Kvp)
 			}
+
+		case CommandUpdateNode:
+			err = d.mgr.GetGuestKVP()
+			if err != nil {
+				log.Err(err).Msgf("%s failed", op)
+				answer.err_(err)
+			}
+			log.Info().Msgf("%v", d.mgr.Kvp)
+
+			ip, ok := d.mgr.Kvp["NetworkAddressIPv4"].(string)
+			if ok && ip != "" {
+				log.Info().Msgf("%v", ip)
+			}
+			client.VmAgentUpdateNode(ip)
+			answer.ok_(d.mgr.Kvp)
 
 		}
 	}

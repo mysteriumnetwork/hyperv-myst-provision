@@ -9,10 +9,11 @@ fi
 
 mkdir node
 cd node
-apk add --no-cache iptables ipset ca-certificates openvpn bash sudo openresolv
+apk add --no-cache iptables ipset ca-certificates bash sudo openresolv wireguard-tools
 wget https://raw.githubusercontent.com/mysteriumnetwork/node/master/bin/helpers/prepare-run-env.sh
 chmod +x ./prepare-run-env.sh
 ./prepare-run-env.sh
+
 wget https://github.com/mysteriumnetwork/node/releases/download/${NODE_VERSION}/myst_linux_amd64.tar.gz
 tar -xvf myst_linux_amd64.tar.gz
 rm myst_linux_amd64.tar.gz

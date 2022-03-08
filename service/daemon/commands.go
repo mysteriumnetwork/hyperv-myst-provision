@@ -26,4 +26,7 @@ const (
 	CommandGetKvp      = "get-kvp"
 	CommandGetVMState  = "get-vm-state"
 	CommandGetAdapters = "get-adapters"
+
+	////
+	CommandUpdateNode = "update-node"
 )
