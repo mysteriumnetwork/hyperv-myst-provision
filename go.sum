@@ -1230,6 +1230,10 @@ github.com/templexxx/cpu v0.0.1/go.mod h1:w7Tb+7qgcAlIyX4NhLuDKt78AHA5SzPmq0Wj6H
 github.com/templexxx/cpufeat v0.0.0-20180724012125-cef66df7f161/go.mod h1:wM7WEvslTq+iOEAMDLSzhVuOt5BRZ05WirO+b09GHQU=
 github.com/templexxx/xor v0.0.0-20191217153810-f85b25db303b/go.mod h1:5XA7W9S6mni3h5uvOC75dA3m9CCCaS83lltmc0ukdi4=
 github.com/templexxx/xorsimd v0.4.1/go.mod h1:W+ffZz8jJMH2SXwuKu9WhygqBMbFnp14G2fqEr8qaNo=
+github.com/terra-farm/go-virtualbox v0.0.4 h1:UAEVNAYLA3g80Z//fMZFVSWHEPqRWkWP2gmFh2p/guQ=
+github.com/terra-farm/go-virtualbox v0.0.4/go.mod h1:5n2X+HKR2eAzHfuGFnrZlCrgiYrseNHIcNTSpA/ViyU=
+github.com/terra-farm/go-virtualbox v0.0.5-0.20220105144057-c7149ec50e96 h1:WhWIIBdQRluSMLMJvQn5Oe4Vkj6TjR2rktjDjhPMl50=
+github.com/terra-farm/go-virtualbox v0.0.5-0.20220105144057-c7149ec50e96/go.mod h1:AzCBcgfONAK4nUCMhG09XLc3oasGNLqg10QbVP68Yxo=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
 github.com/tinylib/msgp v1.0.2/go.mod h1:+d+yLhGm8mzTaHzB+wgMYrodPfmZrzkirds8fDWklFE=
 github.com/tjfoc/gmsm v1.0.1/go.mod h1:XxO4hdhhrzAd+G4CjDqaOkd0hUzmtPR/d3EiBBMn/wc=

@@ -19,10 +19,13 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.26.0
 	github.com/sevlyar/go-daemon v0.1.5
+	github.com/terra-farm/go-virtualbox v0.0.5-0.20220105144057-c7149ec50e96 // indirect
 	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
 )
 
 replace (
+	github.com/terra-farm/go-virtualbox => ../go-virtualbox
+
 	//tag:patch-v1
 	github.com/gabriel-samfira/go-wmi => github.com/mysteriumnetwork/go-wmi v0.0.0-20211216181752-dbce75057213
 
