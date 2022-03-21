@@ -97,6 +97,25 @@ func checkKeystore() bool {
 	return len(files) >= 2
 }
 
+///////
+type ActorWrap struct {
+	pr *utils.ProcessRunner
+}
+
+func (a *ActorWrap) Start() error {
+	// wait for keystotre
+	for checkKeystore() != true {
+		time.Sleep(2 * time.Second)
+	}
+
+	return a.pr.Start()
+}
+
+func (a *ActorWrap) Stop() error {
+	a.pr.Shutdown()
+	return nil
+}
+
 func Serve() {
 
 	version = readEnvMyst()
@@ -124,11 +143,7 @@ func Serve() {
 	}
 	srv := http.Server{}
 
-	// wait for keystotre
-	for checkKeystore() != true {
-		time.Sleep(2 * time.Second)
-	}
-
+	a := ActorWrap{pr}
 	// Shutdown gracefully
 	{
 		var g run.Group
@@ -137,7 +152,8 @@ func Serve() {
 		defer cancel()
 
 		g.Add(func() error { return s.Wait() }, func(err error) { s.Stop() })
-		g.Add(func() error { return pr.Start() }, func(err error) { pr.Shutdown() })
+		// g.Add(func() error { return pr.Start() }, func(err error) { pr.Shutdown() })
+		g.Add(func() error { return a.Start() }, func(err error) { a.Stop() })
 		g.Add(func() error { return srv.Serve(listener1) }, func(err error) { srv.Shutdown(ctx) })
 		g.Add(func() error { return srv.Serve(listener2) }, func(err error) { srv.Shutdown(ctx) })
 
