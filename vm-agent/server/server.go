@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -86,11 +87,11 @@ func saveEnvMyst() {
 }
 
 func setMystCmdArgs() {
-	pr.SetArgs("/bin/myst", "--keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
+	pr.SetArgs(binMyst, "--Keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
 }
 
 func checkKeystore() bool {
-	files, err := ioutil.ReadDir("/root/.mysterium/keystore")
+	files, err := ioutil.ReadDir(Keystore)
 	if err != nil {
 		return false
 	}
@@ -184,7 +185,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	case "/state":
 		res := make(map[string]interface{})
-		res["ips"] = getLocalAddresses(Interface)
+		res["ips"] = getLocalAddresses(interface_)
 
 		version := GetNodeVersion()
 		res["version"] = version
@@ -202,5 +203,40 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		pr.StopCommand()
 		pr.StartCommand()
+
+	case "/upload":
+		err := r.ParseMultipartForm(10 << 32) // grab the multipart form
+		if err != nil {
+			fmt.Fprintln(w, err)
+			return
+		}
+
+		formdata := r.MultipartForm // ok, no problem so far, read the Form data
+
+		files := formdata.File["files"] // grab the filenames
+		for _, f := range files {       // loop through the files one by one
+			fmt.Println("fname >", f.Filename)
+
+			file, err := f.Open()
+			defer file.Close()
+			if err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+
+			out, err := os.Create(Keystore + f.Filename)
+			defer out.Close()
+			if err != nil {
+				fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
+				return
+			}
+
+			_, err = io.Copy(out, file)
+			if err != nil {
+				fmt.Fprintln(w, err)
+				return
+			}
+		}
+
 	}
 }

@@ -1,3 +1,7 @@
 package server
 
-const Interface = "eth0"
+const (
+	interface_ = "wlp4s0"
+	binMyst    = "/bin/myst"
+	Keystore   = "/root/.mysterium/keystore/"
+)

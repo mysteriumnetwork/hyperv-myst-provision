@@ -11,7 +11,6 @@ import (
 // To terminate the daemon use:
 //  kill `cat sample.pid`
 func main() {
-
 	cntxt := &daemon.Context{
 		PidFileName: "/run/vm-myst-agent.pid",
 		PidFilePerm: 0644,

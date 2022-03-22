@@ -45,145 +45,15 @@ expect eof
 # build VM to build vm-agent for Linux Alpine / musl libc
 #####################################################################
 
-# Start the guest VM
-send_user "\nSTAGE 1\n"
+source assets/alpine/provision-image-qemu-step1.exp
 
-spawn qemu-system-x86_64 \
-     -nographic \
-     -bios /usr/share/ovmf/OVMF.fd \
-     -serial mon:stdio \
-     -cdrom alpine-virt-3.14.3-x86_64.iso \
-     -m 512 \
-     -nic user\
-     -boot d \
-     -hda ${disk2}.qcow2
-
-expect "login: "
-send "root\n"
-expect "localhost:~#"
-
-put "assets/alpine/setup-stage-1.sh"
-send "chmod +x /tmp/1.sh\n"
-expect "*#"
-
-send_user "\nRun setup...n"
-send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
-expect "*#"
-poweroff
-
-spawn sh assets/alpine/mk_ext_disk.sh
-expect eof
-
-send_user "\nSTAGE 2\n"
-
-spawn qemu-system-x86_64 \
-     -nographic \
-     -bios /usr/share/ovmf/OVMF.fd \
-     -serial mon:stdio \
-     -m 512 \
-     -nic user\
-     -boot c \
-     -hda ${disk2}.qcow2 \
-     -drive file=ext_disk.img,media=disk,format=raw
-
-expect "login: "
-send "root\n"
-expect "Password: "
-send "$ROOT_PASSWORD\n"
-expect "*#"
-
-put "assets/alpine/setup-stage-2b.sh"
-send "chmod +x /tmp/1.sh\n"
-expect "*#"
-send_user "\nRun setup...n"
-send "/tmp/1.sh\n"
-expect "*#"
-poweroff
 
 #####################################################################
 # build a real VM
 #####################################################################
 
-# Start the guest VM
-send_user "\nSTAGE 3\n"
+source assets/alpine/provision-image-qemu-step2.exp
 
-spawn qemu-system-x86_64 \
-     -nographic \
-     -bios /usr/share/ovmf/OVMF.fd \
-     -serial mon:stdio \
-     -cdrom ${iso} \
-     -m 512 \
-     -nic user\
-     -boot d \
-     -hda ${disk}.qcow2
-
-expect "login: "
-send "root\n"
-expect "localhost:~#"
-
-put "assets/alpine/setup-stage-1.sh"
-send "chmod +x /tmp/1.sh\n"
-expect "*#"
-
-send_user "\nRun setup...n"
-send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
-expect "*#"
-poweroff
-
-
-send_user "\nSTAGE 4\n"
-
-spawn qemu-system-x86_64 \
-     -nographic \
-     -bios /usr/share/ovmf/OVMF.fd \
-     -serial mon:stdio \
-     -m 512 \
-     -nic user\
-     -boot c \
-     -hda ${disk}.qcow2 \
-     -drive file=ext_disk.img,media=disk,format=raw
-
-expect "login: "
-send "root\n"
-expect "Password: "
-send "$ROOT_PASSWORD\n"
-expect "*#"
-
-put "assets/alpine/setup-stage-2.sh"
-send "chmod +x /tmp/1.sh\n"
-expect "*#"
-send_user "\nRun setup...n"
-send "/tmp/1.sh\n"
-expect "*#"
-
-
-#####
-# get latest release version
-set node_version [exec go run cmd/resolve-node-version/resolve.go 2> /dev/null]
-
-put "assets/alpine/install-myst.sh"
-send "chmod +x /tmp/1.sh\n"
-expect "*#"
-send_user "\nSetup node...n"
-send "/tmp/1.sh $node_version\n"
-expect "*#"
-
-put "assets/alpine/myst-service"
-send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/init.d/myst-service; rc-update add myst-service default\n"
-expect "*#"
-
-put "assets/alpine/myst"
-send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/network/if-up.d/myst\n"
-expect "*#"
-
-send "rm /var/log/messages\n"
-expect "*#"
-
-put "assets/alpine/update-myst.sh"
-send "chmod +x /tmp/1.sh; mv /tmp/1.sh /root/update-myst.sh \n"
-expect "*#"
-
-poweroff
 
 ####
 # convert image
