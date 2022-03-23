@@ -3,8 +3,8 @@
 # Start the guest VM
 send_user "\nSTAGE 1\n"
 
+#-enable-kvm
 spawn qemu-system-x86_64 \
-     -enable-kvm \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
@@ -32,8 +32,8 @@ expect eof
 
 send_user "\nSTAGE 2\n"
 
+#-enable-kvm
 spawn qemu-system-x86_64 \
-     -enable-kvm \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
