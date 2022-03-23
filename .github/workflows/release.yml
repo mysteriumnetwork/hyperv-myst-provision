@@ -55,7 +55,7 @@ jobs:
     - name: Install QEMU
       run: |
         sudo apt-get update -q -y
-        sudo apt-get -qq install -y bridge-utils qemu-system-x86 qemu-utils ovmf expect cpu-checker zip
+        sudo apt-get -qq install -y bridge-utils qemu-system-x86 qemu-utils ovmf expect cpu-checker zip virtualbox
 
     - name: Build image
       run: |

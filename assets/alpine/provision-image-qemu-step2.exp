@@ -5,6 +5,7 @@ send_user "\nSTAGE 3\n"
 
 #-enable-kvm
 spawn qemu-system-x86_64 \
+-enable-kvm \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
@@ -32,6 +33,7 @@ send_user "\nSTAGE 4\n"
 
 #-enable-kvm
 spawn qemu-system-x86_64 \
+-enable-kvm \
      -nographic \
      -bios /usr/share/ovmf/OVMF.fd \
      -serial mon:stdio \
