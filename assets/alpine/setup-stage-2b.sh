@@ -1,6 +1,5 @@
 #!/bin/sh
 
-#sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
 
 
 cat > /etc/apk/repositories << EOF; $(echo)
@@ -17,8 +16,9 @@ apk add go git
 cd /root/
 git clone https://github.com/mysteriumnetwork/hyperv-myst-provision/
 cd hyperv-myst-provision
-git switch mvp/vm-agent
+git switch mvp/vbox
 go build -ldflags "-s -w" -o bin/vm-agent vm-agent/main.go
+ls -la bin/
 
 mkdir /mnt/ext
 mount /dev/sdb /mnt/ext

@@ -24,7 +24,8 @@ require (
 )
 
 replace (
-	github.com/terra-farm/go-virtualbox => ../go-virtualbox
+	//tag:patch-v1
+	github.com/terra-farm/go-virtualbox => github.com/mysteriumnetwork/go-virtualbox v0.0.5-0.20220323071623-231aaecf8949
 
 	//tag:patch-v1
 	github.com/gabriel-samfira/go-wmi => github.com/mysteriumnetwork/go-wmi v0.0.0-20211216181752-dbce75057213

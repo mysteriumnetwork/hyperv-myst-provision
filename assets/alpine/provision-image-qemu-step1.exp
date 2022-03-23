@@ -1,0 +1,59 @@
+#!/usr/bin/expect -f
+
+# Start the guest VM
+send_user "\nSTAGE 1\n"
+
+spawn qemu-system-x86_64 \
+     -enable-kvm \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -cdrom alpine-virt-3.14.3-x86_64.iso \
+     -m 512 \
+     -nic user\
+     -boot d \
+     -hda ${disk2}.qcow2
+
+expect "login: "
+send "root\n"
+expect "localhost:~#"
+
+put "assets/alpine/setup-stage-1.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+
+send_user "\nRun setup...n"
+send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+expect "*#"
+poweroff
+
+spawn sh assets/alpine/mk_ext_disk.sh
+expect eof
+
+send_user "\nSTAGE 2\n"
+
+spawn qemu-system-x86_64 \
+     -enable-kvm \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -m 512 \
+     -nic user\
+     -boot c \
+     -hda ${disk2}.qcow2 \
+     -drive file=ext_disk.img,media=disk,format=raw
+
+expect "login: "
+send "root\n"
+expect "Password: "
+send "$ROOT_PASSWORD\n"
+expect "*#"
+
+put "assets/alpine/setup-stage-2b.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nRun setup...n"
+send "/tmp/1.sh\n"
+expect "*#"
+poweroff
+

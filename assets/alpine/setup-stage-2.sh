@@ -8,13 +8,22 @@
 # update-extlinux
 
 # Add guest services
-apk add hvtools
-rc-update add hv_fcopy_daemon default
-rc-update add hv_kvp_daemon default
-rc-update add hv_vss_daemon default
-# rc-service hv_fcopy_daemon start
-# rc-service hv_kvp_daemon start
-# rc-service hv_vss_daemon start
+
+cat > /etc/apk/repositories << EOF; $(echo)
+
+https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d'.' -f1,2)/main/
+https://dl-cdn.alpinelinux.org/alpine/v$(cat /etc/alpine-release | cut -d'.' -f1,2)/community/
+https://dl-cdn.alpinelinux.org/alpine/edge/testing/
+
+EOF
+
+apk add virtualbox-guest-additions
+rc-update add virtualbox-guest-additions default
+
+#apk add hvtools
+#rc-update add hv_fcopy_daemon default
+#rc-update add hv_kvp_daemon default
+#rc-update add hv_vss_daemon default
 
 #sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
 

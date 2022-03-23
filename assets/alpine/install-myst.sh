@@ -14,10 +14,13 @@ wget https://raw.githubusercontent.com/mysteriumnetwork/node/master/bin/helpers/
 chmod +x ./prepare-run-env.sh
 ./prepare-run-env.sh
 
-wget https://github.com/mysteriumnetwork/node/releases/download/${NODE_VERSION}/myst_linux_amd64.tar.gz
+#wget https://github.com/mysteriumnetwork/node/releases/download/${NODE_VERSION}/myst_linux_amd64.tar.gz
+wget https://github.com/mysteriumnetwork/node/releases/download/1.4.11/myst_linux_${arch}.tar.gz
+
 tar -xvf myst_linux_amd64.tar.gz
 rm myst_linux_amd64.tar.gz
 cp myst /bin/
+
 #wget https://raw.githubusercontent.com/mysteriumnetwork/hyperv-myst-provision/master/assets/alpine/myst-service
 #mv myst-service /etc/init.d/
 #chmod +x /etc/init.d/myst-service

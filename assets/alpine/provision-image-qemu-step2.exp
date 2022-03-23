@@ -1,0 +1,86 @@
+#!/usr/bin/expect -f
+
+# Start the guest VM
+send_user "\nSTAGE 3\n"
+
+spawn qemu-system-x86_64 \
+     -enable-kvm \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -cdrom ${iso} \
+     -m 512 \
+     -nic user\
+     -boot d \
+     -hda ${disk}.qcow2
+
+expect "login: "
+send "root\n"
+expect "localhost:~#"
+
+put "assets/alpine/setup-stage-1.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+
+send_user "\nRun setup...n"
+send "ROOT_PASSWORD=$ROOT_PASSWORD /tmp/1.sh\n"
+expect "*#"
+poweroff
+
+
+send_user "\nSTAGE 4\n"
+
+spawn qemu-system-x86_64 \
+     -enable-kvm \
+     -nographic \
+     -bios /usr/share/ovmf/OVMF.fd \
+     -serial mon:stdio \
+     -m 512 \
+     -nic user\
+     -boot c \
+     -hda ${disk}.qcow2 \
+     -drive file=ext_disk.img,media=disk,format=raw
+
+expect "login: "
+send "root\n"
+expect "Password: "
+send "$ROOT_PASSWORD\n"
+expect "*#"
+
+put "assets/alpine/setup-stage-2.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nRun setup...n"
+send "/tmp/1.sh\n"
+expect "*#"
+
+
+#####
+# get latest release version
+#####
+
+set node_version [exec go run cmd/resolve-node-version/resolve.go 2> /dev/null]
+
+put "assets/alpine/install-myst.sh"
+send "chmod +x /tmp/1.sh\n"
+expect "*#"
+send_user "\nSetup node...n"
+send "/tmp/1.sh $node_version\n"
+expect "*#"
+
+put "assets/alpine/myst-service"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/init.d/myst-service; rc-update add myst-service default\n"
+expect "*#"
+
+put "assets/alpine/myst"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /etc/network/if-up.d/myst\n"
+expect "*#"
+
+send "rm /var/log/messages\n"
+expect "*#"
+
+put "assets/alpine/update-myst.sh"
+send "chmod +x /tmp/1.sh; mv /tmp/1.sh /root/update-myst.sh \n"
+expect "*#"
+
+poweroff

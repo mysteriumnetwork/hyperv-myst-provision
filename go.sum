@@ -986,6 +986,8 @@ github.com/mysteriumnetwork/go-dvpn-web v1.5.0/go.mod h1:EflugstrqapwAGF/Jgekw70
 github.com/mysteriumnetwork/go-fileversion v1.0.0-fix1 h1:5hXvl45QKdd+IY9rVbFLnZJ7sVvzzhkvZHMcxQ16HKo=
 github.com/mysteriumnetwork/go-fileversion v1.0.0-fix1/go.mod h1:VM+SiWjSJROa/fvPsFV24bWoHcCvyXnI0mmwKv9dVjc=
 github.com/mysteriumnetwork/go-openvpn v0.0.23/go.mod h1:YDjnxC/3sGNecq/f6GM0BGz7nnGPTPIGtQjHaoLf8UE=
+github.com/mysteriumnetwork/go-virtualbox v0.0.5-0.20220323071623-231aaecf8949 h1:fCpRb2/OUy4S3uEGOQz95zY0CA3KYNmCUjWl2+LXioo=
+github.com/mysteriumnetwork/go-virtualbox v0.0.5-0.20220323071623-231aaecf8949/go.mod h1:AzCBcgfONAK4nUCMhG09XLc3oasGNLqg10QbVP68Yxo=
 github.com/mysteriumnetwork/go-wmi v0.0.0-20211216181752-dbce75057213 h1:Ywxv9qzd1zXjtopGSUBV6ACtTDolRugjU0eB7FqtkSI=
 github.com/mysteriumnetwork/go-wmi v0.0.0-20211216181752-dbce75057213/go.mod h1:4i91vCsWTxVaXLNe8XYtK1D1kRUSkZtJqQbY3FvBIgU=
 github.com/mysteriumnetwork/go-wondershaper v1.0.1/go.mod h1:pWWNkO73g3vPSVb+6O+GzjG8lqv4ByNHR6thSG7WmtY=

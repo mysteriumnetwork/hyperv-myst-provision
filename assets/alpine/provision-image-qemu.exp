@@ -24,9 +24,10 @@ proc put {infile} {
 proc poweroff {} {
      send_user "\nReboot...\n\n"
      send "poweroff\n"
-     sleep 3
-     close
-     sleep 1
+     expect eof
+#     sleep 3
+#     close
+#     sleep 1
 }
 
 set ROOT_PASSWORD "root-password"
@@ -52,7 +53,7 @@ source assets/alpine/provision-image-qemu-step1.exp
 # build a real VM
 #####################################################################
 
-source assets/alpine/provision-image-qemu-step2.exp
+#source assets/alpine/provision-image-qemu-step2.exp
 
 
 ####
