@@ -46,7 +46,7 @@ expect eof
 # build VM to build vm-agent for Linux Alpine / musl libc
 #####################################################################
 
-#source assets/alpine/provision-image-qemu-step1.exp
+source assets/alpine/provision-image-qemu-step1.exp
 
 
 #####################################################################
