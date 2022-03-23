@@ -59,4 +59,5 @@ source assets/alpine/provision-image-qemu-step2.exp
 ####
 # convert image
 spawn qemu-img convert ${disk}.qcow2 -O vhdx -o subformat=dynamic ${disk}.vhdx
+spawn qemu-img convert ${disk}.qcow2 -O vdi -o subformat=dynamic ${disk}.vdi
 expect eof
