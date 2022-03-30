@@ -1,9 +1,7 @@
 package client
 
 import (
-
 	//"log"
-
 	"bytes"
 	"encoding/json"
 	"fmt"

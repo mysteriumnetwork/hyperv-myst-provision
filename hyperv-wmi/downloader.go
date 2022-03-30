@@ -6,9 +6,8 @@ import (
 	"os"
 
 	"github.com/artdarek/go-unzip/pkg/unzip"
-
+	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/provisioner"
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	"github.com/mysteriumnetwork/myst-launcher/utils"
 )
 

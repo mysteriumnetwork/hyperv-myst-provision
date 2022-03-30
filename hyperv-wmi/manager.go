@@ -11,7 +11,7 @@ import (
 	"github.com/go-ole/go-ole"
 	"github.com/pkg/errors"
 
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
+	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 )
 

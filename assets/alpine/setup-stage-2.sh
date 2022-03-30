@@ -19,6 +19,8 @@ EOF
 
 apk add virtualbox-guest-additions
 rc-update add virtualbox-guest-additions default
+rc-update add acpid default
+
 
 #apk add hvtools
 #rc-update add hv_fcopy_daemon default
