@@ -16,10 +16,10 @@ import (
 
 	consts "github.com/mysteriumnetwork/hyperv-node/const"
 	hyperv_wmi "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/flags"
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 	"github.com/mysteriumnetwork/hyperv-node/service/install"
 	"github.com/mysteriumnetwork/hyperv-node/service/logconfig"
