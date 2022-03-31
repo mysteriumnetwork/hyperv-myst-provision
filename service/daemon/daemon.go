@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	hyperv_wmi2 "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/model"
 	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
 
 	"github.com/rs/zerolog/log"
