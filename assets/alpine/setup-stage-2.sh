@@ -21,11 +21,14 @@ apk add virtualbox-guest-additions
 rc-update add virtualbox-guest-additions default
 rc-update add acpid default
 
+echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
 
-#apk add hvtools
-#rc-update add hv_fcopy_daemon default
-#rc-update add hv_kvp_daemon default
-#rc-update add hv_vss_daemon default
+
+apk add hvtools
+rc-update add hv_fcopy_daemon default
+rc-update add hv_kvp_daemon default
+rc-update add hv_vss_daemon default
 
 #sed -i 's/^ttyS0/#ttyS0/' /etc/inittab
 
