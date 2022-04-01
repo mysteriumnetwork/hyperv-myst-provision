@@ -98,8 +98,9 @@ func checkKeystore() bool {
 }
 
 func Serve() {
+	os.MkdirAll(Keystore, os.ModePerm)
+
 	version = readEnvMyst()
-	log.Println("version >>>>", version)
 	if version == "" {
 		version = "0.0.0"
 	}
@@ -193,25 +194,21 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		formdata := r.MultipartForm // ok, no problem so far, read the Form data
-
-		files := formdata.File["files"] // grab the filenames
-		for _, f := range files {       // loop through the files one by one
-			fmt.Println("fname >", f.Filename)
-
+		files := r.MultipartForm.File["files"]
+		for _, f := range files {
 			file, err := f.Open()
-			defer file.Close()
 			if err != nil {
 				fmt.Fprintln(w, err)
 				return
 			}
+			defer file.Close()
 
 			out, err := os.Create(Keystore + f.Filename)
-			defer out.Close()
 			if err != nil {
 				fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
 				return
 			}
+			defer out.Close()
 
 			_, err = io.Copy(out, file)
 			if err != nil {

@@ -9,8 +9,6 @@ import (
 	"github.com/sevlyar/go-daemon"
 )
 
-// To terminate the daemon use:
-//  kill `cat sample.pid`
 func main() {
 	cntxt := &daemon.Context{
 		PidFileName: "/run/vm-myst-agent.pid",
@@ -31,10 +29,8 @@ func main() {
 	}
 	defer cntxt.Release()
 
-	log.Print("- - - - - - - - - - - - - - -")
-	log.Print("daemon started")
-
+	log.Print("daemon started >")
 	log.Print(os.Args)
 	server.Serve()
-	log.Println("daemon exit")
+	log.Println("daemon exit >")
 }
