@@ -1,7 +1,7 @@
 package server
 
 const (
-	interface_ = "eth0"
-	binMyst    = "/bin/myst"
-	Keystore   = "/root/.mysterium/keystore/"
+	NetInterface = "eth0"
+	BinMyst      = "/bin/myst"
+	Keystore     = "/root/.mysterium/keystore/"
 )

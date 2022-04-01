@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/mysteriumnetwork/hyperv-node/vm-agent/server"
+
 	"github.com/sevlyar/go-daemon"
 )
 
@@ -35,8 +36,5 @@ func main() {
 
 	log.Print(os.Args)
 	server.Serve()
-
-	//ver := server.GetNodeVersion()
-	//log.Println("current version:", ver)
 	log.Println("daemon exit")
 }
