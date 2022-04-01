@@ -1,7 +1,6 @@
 package client
 
 import (
-	//"log"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,9 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/mysteriumnetwork/hyperv-node/vm-agent/server"
-
 	hyperv_wmi "github.com/mysteriumnetwork/hyperv-node/hyperv-wmi"
+	"github.com/mysteriumnetwork/hyperv-node/vm-agent/server"
 	"github.com/rs/zerolog/log"
 )
 
@@ -67,7 +65,7 @@ func VmAgentUpdateNode(ip string) error {
 	return nil
 }
 
-func VmAgentUploadKeystore(ip string) error {
+func VmAgentUploadKeystore(ip string, path string) error {
 
 	url := "http://" + ip + ":8080/upload"
 	method := "POST"
@@ -75,7 +73,7 @@ func VmAgentUploadKeystore(ip string) error {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
-	files, err := ioutil.ReadDir(server.Keystore)
+	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		return err
 	}

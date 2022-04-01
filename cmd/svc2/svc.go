@@ -233,7 +233,7 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 		return err
 	}
 	keystorePath := homeDir + `\.mysterium\keystore`
-	cmd := vbox.KVMap{
+	cmd := model.KVMap{
 		"cmd":             daemon.CommandImportVM,
 		"keystore":        keystorePath,
 		"report-progress": true,
@@ -250,14 +250,14 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 	dataStr, _ := json.Marshal(res["data"])
 	fmt.Println("Report:", string(dataStr))
 
-	cmd = vbox.KVMap{
+	cmd = model.KVMap{
 		"cmd": daemon.CommandGetKvp,
 	}
 	kv := client.SendCommand(conn, cmd)
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 	fmt.Println(kv)
 
-	data := vbox.NewKVMap(kv["data"])
+	data := model.NewKVMap(kv["data"])
 	if data != nil {
 
 		ip, ok := data["IP"].(string)
@@ -265,7 +265,9 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 			log.Print("Web UI is at http://" + ip + ":4449")
 			fmt.Println("Web UI is at http://" + ip + ":4449")
 
-			err := client.VmAgentSetLauncherVersion(ip)
+			err := utils.Retry(5, 1*time.Second, func() error {
+				return client.VmAgentSetLauncherVersion(ip)
+			})
 			if err != nil {
 				return nil
 			}
@@ -280,7 +282,7 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 }
 
 func disableVM(conn net.Conn) {
-	cmd := vbox.KVMap{
+	cmd := model.KVMap{
 		"cmd": daemon.CommandStopVM,
 	}
 	res := client.SendCommand(conn, cmd)
@@ -293,7 +295,7 @@ func disableVM(conn net.Conn) {
 func updateNode(conn net.Conn) {
 	fmt.Println("updateNode")
 
-	cmd := vbox.KVMap{
+	cmd := model.KVMap{
 		"cmd": daemon.CommandUpdateNode,
 	}
 	res := client.SendCommand(conn, cmd)
@@ -306,7 +308,7 @@ func updateNode(conn net.Conn) {
 
 // returns: adapter ID, Name
 func selectAdapter(conn net.Conn) (string, string, error) {
-	cmd := vbox.KVMap{
+	cmd := model.KVMap{
 		"cmd": daemon.CommandGetAdapters,
 	}
 	res := client.SendCommand(conn, cmd)

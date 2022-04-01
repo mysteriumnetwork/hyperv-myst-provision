@@ -98,17 +98,16 @@ func checkKeystore() bool {
 	return len(files) >= 2
 }
 
-///////
+/////////////////////////////////////////
 type ActorWrap struct {
 	pr *utils.ProcessRunner
 }
 
 func (a *ActorWrap) Start() error {
 	// wait for keystotre
-	for checkKeystore() != true {
+	for !checkKeystore() {
 		time.Sleep(2 * time.Second)
 	}
-
 	return a.pr.Start()
 }
 
@@ -117,8 +116,8 @@ func (a *ActorWrap) Stop() error {
 	return nil
 }
 
-func Serve() {
 
+func Serve() {
 	version = readEnvMyst()
 	log.Println("version >>>>", version)
 	if version == "" {
@@ -145,7 +144,8 @@ func Serve() {
 	srv := http.Server{}
 
 	a := ActorWrap{pr}
-	// Shutdown gracefully
+
+	// Start & shutdown gracefully
 	{
 		var g run.Group
 		s := utils.NewSigTermHandler()

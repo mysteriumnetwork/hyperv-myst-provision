@@ -3,14 +3,13 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	//"log"
 	"net"
 
+	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/rs/zerolog/log"
-	"github.com/mysteriumnetwork/hyperv-node/vbox"
 )
 
-func SendCommand(conn net.Conn, m vbox.KVMap) vbox.KVMap {
+func SendCommand(conn net.Conn, m model.KVMap) model.KVMap {
 	b, _ := json.Marshal(m)
 	log.Debug().Msgf("send > %v", string(b))
 	conn.Write(b)

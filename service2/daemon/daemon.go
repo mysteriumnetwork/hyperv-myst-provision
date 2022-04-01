@@ -124,6 +124,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 					AdapterID:            adapterID,
 					AdapterName:          adapterName,
 				}, fn, vmInfo)
+
 				if err != nil {
 					log.Err(err).Msgf("%s failed >", op)
 					answer.err_(err)

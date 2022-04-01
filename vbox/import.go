@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
+	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
+	"github.com/mysteriumnetwork/myst-launcher/utils"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +59,6 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	// if err = m.EnableGuestServices(); err != nil {
 	// 	return errors.Wrap(err, "EnableGuestServices")
 	// }
-	log.Println("StartVM")
 	if err = m.StartVM(); err != nil {
 		return errors.Wrap(err, "StartVM")
 	}
@@ -71,7 +72,6 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	)
 	if err != nil {
 		log.Println("WaitUntilBoot", err)
-
 		return errors.Wrap(err, "WaitUntilBoot")
 	}
 	log.Println("WaitUntilBoot OK>")
@@ -88,6 +88,17 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
 		return errors.Wrap(err, "Keystore not found")
 	}
+
+	//
+	log.Println("VmAgentGetState>")
+	ip := m.Kvp["IP"].(string)
+	err = utils.Retry(5, time.Second, func() error {
+		return client.VmAgentGetState(ip)
+	})
+	if err != nil {
+		return errors.Wrap(err, "VmAgentGetState")
+	}
+	log.Println("VmAgentGetState>>>")
 
 	log.Println("keystorePath >", keystorePath)
 	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
@@ -106,7 +117,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 			vi.NodeIdentity = data.Identity.Address
 			vi.OS = winutil.GetWindowsVersion()
 		}
-		return m.CopyFile(path, "/root/.mysterium/keystore/")
+		return m.CopyFile(path, keystorePath)
 	})
 	if err != nil {
 		return errors.Wrap(err, "Walk")

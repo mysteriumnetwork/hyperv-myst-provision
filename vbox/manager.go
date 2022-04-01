@@ -11,6 +11,7 @@ import (
 	"github.com/terra-farm/go-virtualbox"
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
+	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service2/util/winutil"
 )
 
@@ -172,7 +173,7 @@ func (m *Manager) StopVM() error {
 
 func (m *Manager) GetGuestKVP() error {
 
-	m.Kvp = make(KVMap)
+	m.Kvp = make(model.KVMap)
 
 	getKey := func(keySpec, key string) error {
 		val, err := virtualbox.GetGuestProperty(VM, keySpec)
@@ -202,6 +203,9 @@ func (m *Manager) EnableGuestServices() error {
 
 func (m *Manager) CopyFile(src, dst string) error {
 	log.Println("CopyFile>", src, dst)
+
+	ip := m.Kvp["IP"].(string)
+	client.VmAgentUploadKeystore(ip, src)
 	return nil
 }
 
