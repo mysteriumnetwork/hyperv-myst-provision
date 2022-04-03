@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -11,8 +10,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
 	"github.com/mysteriumnetwork/hyperv-node/model"
-	"github.com/mysteriumnetwork/hyperv-node/vm-agent/server"
 
 	"github.com/rs/zerolog/log"
 )
@@ -68,32 +68,30 @@ func VmAgentUpdateNode(ip string) error {
 
 func VmAgentUploadKeystore(ip string, path string) error {
 
-	log.Info().Msg("VmAgentUploadKeystore >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	log.Info().Msgf("VmAgentUploadKeystore >>> %s", path)
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "ioutil.ReadDir")
 	}
 	for _, f := range files {
 		if !f.IsDir() {
+			fPath := filepath.Join(path, f.Name())
+			file, _ := os.Open(fPath)
+			part, _ := writer.CreateFormFile("files", filepath.Base(fPath))
 
-			fPath := server.Keystore + f.Name()
-			file, err := os.Open(fPath)
-			part, err := writer.CreateFormFile("files", filepath.Base(fPath))
 			_, err = io.Copy(part, file)
 			if err != nil {
-				fmt.Println(err)
-				return err
+				return errors.Wrap(err, "io.Copy")
 			}
 			file.Close()
 		}
 	}
 
 	if err = writer.Close(); err != nil {
-		fmt.Println(err)
-		return err
+		return errors.Wrap(err, "writer.Close")
 	}
 	url := "http://" + ip + ":8080/upload"
 	method := "POST"

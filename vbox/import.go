@@ -117,11 +117,14 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 			vi.NodeIdentity = data.Identity.Address
 			vi.OS = winutil.GetWindowsVersion()
 		}
-		return m.CopyFile(path, keystorePath)
+		return nil
+		// return m.CopyFile(path, keystorePath)
 	})
 	if err != nil {
 		return errors.Wrap(err, "Walk")
 	}
+	err = m.CopyFile(keystorePath)
+	log.Println("CopyFile", err)
 
 	err = m.WaitUntilGotIP(
 		time.Duration(opt.VMBootPollSeconds)*time.Second,

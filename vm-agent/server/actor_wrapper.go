@@ -19,9 +19,10 @@ func (a *ActorWrapper) Start() error {
 	if checkKeystore() {
 		return a.pr.Start()
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	a.cancel = cancel
-	defer cancel()
+	//defer cancel()
 
 	for {
 		select {
@@ -36,11 +37,12 @@ func (a *ActorWrapper) Start() error {
 		}
 	}
 
-	return a.pr.Start()
 }
 
 func (a *ActorWrapper) Stop() error {
 	fmt.Println("ActorWrapper > Stop")
-	a.cancel()
+	if a.cancel != nil {
+		a.cancel()
+	}
 	return nil
 }

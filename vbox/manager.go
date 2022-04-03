@@ -201,12 +201,12 @@ func (m *Manager) EnableGuestServices() error {
 	return nil
 }
 
-func (m *Manager) CopyFile(src, dst string) error {
-	log.Println("CopyFile>", src, dst)
+func (m *Manager) CopyFile(src string) error {
+	log.Println("CopyFile>", src)
 
 	ip := m.Kvp["IP"].(string)
-	client.VmAgentUploadKeystore(ip, src)
-	return nil
+	err := client.VmAgentUploadKeystore(ip, src)
+	return err
 }
 
 func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
