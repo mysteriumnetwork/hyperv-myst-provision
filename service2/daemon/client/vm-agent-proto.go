@@ -11,10 +11,9 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
-
-	"github.com/rs/zerolog/log"
 )
 
 func VmAgentSetLauncherVersion(ip string) error {

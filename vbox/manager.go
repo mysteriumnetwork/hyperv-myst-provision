@@ -26,16 +26,7 @@ const (
 type Manager struct {
 	cfg    *model.Config
 	vmName string
-
-	cimv2 *wmi.WMI
-
-	/* hyperv */
-	// con              *wmi.WMI
-	// wmi              *wmi.WMI
-	// switchMgr        *wmi.Result
-	// vsMgr            *wmi.Result
-	// imageMgr         *wmi.Result
-	// guestFileService *wmi.Result // file copy service
+	cimv2  *wmi.WMI
 
 	// guest KV map
 	Kvp map[string]interface{}
@@ -51,42 +42,11 @@ func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 		return nil, err
 	}
 
-	// w, err := wmi.NewConnection(".", `root\virtualization\v2`)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// wmi_, err := wmi.NewConnection(".", `root\wmi`)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// // Get virtual switch management service
-	// switchMgr, err := w.GetOne(VMSwitchManagementService, []string{}, []wmi.Query{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// vsMgr, err := w.GetOne(VMSystemManagementService, []string{}, []wmi.Query{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// imageMgr, err := w.GetOne(VMImageManagementService, []string{}, []wmi.Query{})
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	n := winutil.NewNotifier()
-
 	sw := &Manager{
-		vmName: vmName,
-		cfg:    cfg,
-		cimv2:  cimv2,
-
-		// con:       w,
-		// wmi:       wmi_,
-		// switchMgr: switchMgr,
-		// vsMgr:     vsMgr,
-		// imageMgr:  imageMgr,
+		vmName:   vmName,
+		cfg:      cfg,
+		cimv2:    cimv2,
 		Kvp:      nil,
 		notifier: n,
 	}

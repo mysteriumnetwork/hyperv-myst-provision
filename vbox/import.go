@@ -47,6 +47,15 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	// }
 	// vi.AdapterName = na.Name
 
+	aa, _ := m.SelectAdapter()
+	for _, a := range aa {
+		if (a.NetType == "Wi-Fi" && !opt.PreferEthernet) || (a.NetType != "Wi-Fi" && opt.PreferEthernet) {
+			opt.AdapterID = a.ID
+			opt.AdapterName = a.Name
+			break
+		}
+	}
+
 	vhdFilePath, err := m.DownloadRelease(DownloadOptions{false, m.cfg}, pf)
 	if err != nil {
 		return err

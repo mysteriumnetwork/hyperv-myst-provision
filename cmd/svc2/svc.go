@@ -248,14 +248,15 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 	}
 
 	dataStr, _ := json.Marshal(res["data"])
+	fmt.Println()
 	fmt.Println("Report:", string(dataStr))
 
 	cmd = model.KVMap{
 		"cmd": daemon.CommandGetKvp,
 	}
 	kv := client.SendCommand(conn, cmd)
-	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-	fmt.Println(kv)
+	fmt.Println()
+	// fmt.Println(kv)
 
 	data := model.NewKVMap(kv["data"])
 	if data != nil {
