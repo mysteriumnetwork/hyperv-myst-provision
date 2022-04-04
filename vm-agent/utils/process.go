@@ -51,16 +51,25 @@ func (r *ProcessRunner) runCmd() error {
 	return nil
 }
 
-func (r *ProcessRunner) Start() error {
+func (r *ProcessRunner) Start(start chan bool) error {
 
-	if err := r.runCmd(); err != nil {
-		log.Println("runCmd", err)
-		return err
+	if start == nil {
+		if err := r.runCmd(); err != nil {
+			log.Println("runCmd", err)
+			return err
+		}
 	}
 	r.isStopped = false
 
 	for {
 		select {
+
+		case <-start:
+			log.Print("start chan >>>")
+			r.isStopped = false
+			if err := r.runCmd(); err != nil {
+				log.Print("run cmd error:", err)
+			}
 
 		case err := <-r.done:
 			if err != nil {
@@ -79,8 +88,10 @@ func (r *ProcessRunner) Start() error {
 		case act := <-r.action:
 			switch act {
 			case "shutdown":
-				err := r.cmd.Process.Kill()
-				log.Println("shutdown > kill cmd", err)
+				if r.cmd != nil {
+					err := r.cmd.Process.Kill()
+					log.Println("shutdown > kill cmd", err)
+				}
 				return nil
 
 			case "stop":

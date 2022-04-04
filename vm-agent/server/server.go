@@ -105,6 +105,7 @@ func Serve() {
 		version = "0.0.0"
 	}
 
+	w := PreStartWatcher()
 	pr = utils.NewProcessRunner()
 	setMystCmdArgs()
 
@@ -133,9 +134,7 @@ func Serve() {
 		ctx.Done()
 
 		g.Add(func() error { return s.Wait() }, func(err error) { s.Stop() })
-		a := ActorWrapper{pr, nil}
-		g.Add(func() error { return a.Start() }, func(err error) { a.Stop() })
-
+		g.Add(func() error { return pr.Start(w) }, func(err error) { pr.Shutdown() })
 		g.Add(func() error { return srv.Serve(listener1) }, func(err error) { srv.Shutdown(ctx) })
 		g.Add(func() error { return srv.Serve(listener2) }, func(err error) { srv.Shutdown(ctx) })
 
@@ -169,9 +168,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	case "/state":
 		res := make(map[string]interface{})
 		res["ips"] = getLocalAddresses(NetInterface)
-
-		version := GetNodeVersion()
-		res["version"] = version
+		res["version"] = GetNodeVersion()
 		json.NewEncoder(w).Encode(res)
 
 	case "/update":
