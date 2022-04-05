@@ -122,19 +122,10 @@ func main() {
 			}
 
 			platformMgr, _ := platform.NewManager()
-			_ = platformMgr
-
-			// ok, err := platformMgr.Features()
-			// if err != nil {
-			// 	log.Fatal().Err(err).Msg("Failed to determine HyperV")
-			// }
-			// if !ok {
-			// 	log.Info().Msg("HyperV is not enabled")
-			// 	err := platformMgr.EnableHyperVPlatform()
-			// 	if err != nil {
-			// 		log.Fatal().Err(err).Msg("Failed to enable HyperV")
-			// 	}
-			// }
+			err := platformMgr.EnableVirtualBox()
+			if err != nil {
+				log.Fatal().Err(err).Msg("Failed to enable VirtualBox")
+			}
 
 			for {
 				fmt.Println("Select an action")
@@ -174,7 +165,6 @@ func main() {
 					if err != nil {
 						log.Fatal().Err(err).Msg("Select adapter")
 					}
-					fmt.Println(ID)
 
 					err = enableVM(conn, false, ID, Name)
 					if err != nil {

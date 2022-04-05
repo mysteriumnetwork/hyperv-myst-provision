@@ -4,6 +4,7 @@
 package platform
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"log"
@@ -13,6 +14,8 @@ import (
 	"syscall"
 
 	"github.com/mysteriumnetwork/myst-launcher/native"
+	"github.com/mysteriumnetwork/myst-launcher/utils"
+	"github.com/winlabs/gowin32"
 
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/google/glazier/go/dism"
@@ -235,5 +238,45 @@ func (m *Manager) initializeDism() error {
 	}
 	m.ses = ses
 	m.hasDism = true
+	return nil
+}
+
+func (m *Manager) EnableVirtualBox() error {
+
+	l, err := gowin32.GetInstalledProducts()
+	if err != nil {
+		return err
+	}
+
+	for _, v := range l {
+		n, err := gowin32.GetInstalledProductProperty(v, gowin32.InstallPropertyProductName)
+		if err != nil {
+			return err
+		}
+
+		if strings.HasPrefix(n, "Oracle VM VirtualBox") {
+			// installed
+			return nil
+		}
+	}
+	log.Println("VirtualBox is not installed. Downloading..")
+
+	url := "https://download.virtualbox.org/virtualbox/6.1.32/VirtualBox-6.1.32-149290-Win.exe"
+	fmt.Println("Downloading Docker desktop: ", url)
+
+	exe := "virtualbox.exe"
+	wd, _ := os.Getwd()
+	err = utils.DownloadFile(filepath.Join(wd, exe), url, func(progress int) {
+		if progress%10 == 0 {
+			fmt.Println(fmt.Sprintf("%s - %d%%", exe, progress))
+		}
+	})
+	var buf bytes.Buffer
+	_, err = utils.CmdRun(&buf, exe, "--silent", "--ignore-reboot")
+	if err != nil {
+		fmt.Println("Failed to run command:", err)
+		return nil
+	}
+	fmt.Println(">>>", buf.String())
 	return nil
 }

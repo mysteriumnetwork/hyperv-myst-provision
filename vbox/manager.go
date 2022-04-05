@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gabriel-samfira/go-wmi/wmi"
@@ -60,8 +61,9 @@ func (mn *Manager) GetVM() (*virtualbox.Machine, error) {
 
 func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	log.Println("CreateVM >>", opt)
-	log.Println(os.Getwd())
 	cwd, _ := os.Getwd()
+	log.Println(cwd)
+
 
 	m, err := virtualbox.CreateMachine(VM, cwd)
 	log.Println("CreateVM >>", m, err)
@@ -79,8 +81,6 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	m.BootOrder = []string{"disk", "none", "none", "none"}
 	m.Memory = 256
 	m.Modify()
-
-	//bridgeadapter1 := "Intel(R) Dual Band Wireless-AC 8260"
 
 	err = m.SetNIC(1, virtualbox.NIC{
 		Network:       virtualbox.NICNetBridged,
@@ -100,8 +100,8 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	})
 	log.Println("AddStorageCtl", err)
 
-	// img := `C:\Users\user\src\hyperv-myst-provision\alpine-vm-disk.vdi`
-	img := `C:\ProgramData\MystVmHelper\vhdx\alpine-vm-disk.vdi`
+	img := filepath.Join(cwd, `vhdx\alpine-vm-disk.vdi`)
+	log.Println("img >", img)
 
 	err = m.AttachStorage(storageCtl, virtualbox.StorageMedium{Port: 0, Device: 0, DriveType: virtualbox.DriveHDD, Medium: img})
 	log.Println("AttachStorage", err)

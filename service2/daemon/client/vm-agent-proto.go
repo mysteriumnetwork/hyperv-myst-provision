@@ -17,7 +17,6 @@ import (
 )
 
 func VmAgentSetLauncherVersion(ip string) error {
-	log.Info().Msg("VmAgentSetLauncherVersion >>>")
 
 	ep := "http://" + ip + ":8080/set?launcher=vmh-0.0.1/windows"
 	resp, err := http.Get(ep)

@@ -41,17 +41,13 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	}
 	// }
 
-	// na := Adapter{}
-	// if err := m.ModifySwitchSettings(opt.PreferEthernet, opt.AdapterID, &na); err != nil {
-	// 	return errors.Wrap(err, "ModifySwitchSettings")
-	// }
-	// vi.AdapterName = na.Name
-
 	aa, _ := m.SelectAdapter()
 	for _, a := range aa {
 		if (a.NetType == "Wi-Fi" && !opt.PreferEthernet) || (a.NetType != "Wi-Fi" && opt.PreferEthernet) {
 			opt.AdapterID = a.ID
 			opt.AdapterName = a.Name
+
+			vi.AdapterName = a.Name
 			break
 		}
 	}
