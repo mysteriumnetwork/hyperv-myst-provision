@@ -24,6 +24,13 @@ rc-update add acpid default
 echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
 echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
 
+tee -a /etc/network/interfaces << END
+
+auto eth1
+iface eth1 inet dhcp
+
+END
+
 
 apk add hvtools
 rc-update add hv_fcopy_daemon default

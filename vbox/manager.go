@@ -84,8 +84,17 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 
 	err = m.SetNIC(1, virtualbox.NIC{
 		Network:       virtualbox.NICNetBridged,
-		Hardware:      virtualbox.IntelPro1000MTDesktop,
+		Hardware:      virtualbox.VirtIO,
 		HostInterface: opt.AdapterName,
+		MacAddr:       macAddress,
+	})
+	log.Println("SetNIC", err)
+
+	// define internal host-only network
+	err = m.SetNIC(2, virtualbox.NIC{
+		Network:       virtualbox.NICNetHostonly,
+		Hardware:      virtualbox.VirtIO,
+		HostInterface: "VirtualBox Host-Only Ethernet Adapter",
 		MacAddr:       macAddress,
 	})
 	log.Println("SetNIC", err)
