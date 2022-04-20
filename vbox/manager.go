@@ -1,7 +1,6 @@
 package vbox
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -20,25 +19,32 @@ const (
 	macAddress = "00155D21A42C"
 	VM         = "Myst VM (alpine)"
 
-	KeyIPv4   = "/VirtualBox/GuestInfo/Net/0/V4/IP"
-	KeyOSProd = "/VirtualBox/GuestInfo/OS/Product"
+	KeyOSProd       = "/VirtualBox/GuestInfo/OS/Product"
+	KeyIPv4         = "/VirtualBox/GuestInfo/Net/0/V4/IP"
+	KeyInternalIPv4 = "/VirtualBox/GuestInfo/Net/1/V4/IP"
 )
 
 type Manager struct {
-	cfg    *model.Config
-	vmName string
-	cimv2  *wmi.WMI
+	cfg     *model.Config
+	vmName  string
+	cimv2   *wmi.WMI
+	rootWmi *wmi.WMI
 
 	// guest KV map
 	Kvp map[string]interface{}
 
 	// ethernet notifier
-	notifier winutil.Notifier
+	notifier   winutil.Notifier
+	MinAdapter Adapter
 }
 
 // NewVMManager returns a new Manager type
 func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 	cimv2, err := wmi.NewConnection(".", `root\cimv2`)
+	if err != nil {
+		return nil, err
+	}
+	rootWmi, err := wmi.NewConnection(".", `root\WMI`)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +54,7 @@ func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 		vmName:   vmName,
 		cfg:      cfg,
 		cimv2:    cimv2,
+		rootWmi:  rootWmi,
 		Kvp:      nil,
 		notifier: n,
 	}
@@ -63,7 +70,6 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	log.Println("CreateVM >>", opt)
 	cwd, _ := os.Getwd()
 	log.Println(cwd)
-
 
 	m, err := virtualbox.CreateMachine(VM, cwd)
 	log.Println("CreateVM >>", m, err)
@@ -118,8 +124,35 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	return nil
 }
 
+func (mn *Manager) SetNicAndRestartVM() error {
+	log.Println("Manager !SetNicAndRestartVM")
+
+	vm, err := mn.GetVM()
+	if err != nil {
+		return errors.Wrap(err, "GetOne")
+	}
+	if err = vm.Stop(); err != nil {
+		return err
+	}
+
+	err = vm.SetNIC(1, virtualbox.NIC{
+		Network:       virtualbox.NICNetBridged,
+		Hardware:      virtualbox.VirtIO,
+		HostInterface: mn.MinAdapter.Name,
+		MacAddr:       macAddress,
+	})
+	log.Println("Manager !SetNicAndRestartVM !SetNIC", err)
+
+	if err = vm.Start(); err != nil {
+		return err
+	}
+
+	virtualbox.SetGuestProperty(VM, KeyIPv4, "")
+	return nil
+}
+
 func (mn *Manager) StartVM() error {
-	fmt.Println("StartVM")
+	log.Println("Manager !StartVM")
 	vm, err := mn.GetVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
@@ -130,8 +163,13 @@ func (mn *Manager) StartVM() error {
 	return err
 }
 
+func (mn *Manager) IsNetworkOnline() bool {
+	log.Println("Manager !IsNetworkOnline")
+	return mn.MinAdapter.Metric > 0
+}
+
 func (m *Manager) StopVM() error {
-	fmt.Println("StopVM")
+	log.Println("StopVM")
 	vm, err := m.GetVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
@@ -150,13 +188,14 @@ func (m *Manager) GetGuestKVP() error {
 			log.Println("GetGuestProperty", err)
 			return err
 		} else {
-			log.Println("GetGuestProperty >", keySpec, val)
+			// log.Println("GetGuestProperty >", keySpec, val)
 
 			m.Kvp[key] = val
 			return nil
 		}
 	}
 	getKey(KeyIPv4, "IP")
+	getKey(KeyInternalIPv4, "IP_int")
 	getKey(KeyOSProd, "OS")
 
 	return nil

@@ -254,7 +254,6 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 		ip, ok := data["NetworkAddressIPv4"].(string)
 		if ok && ip != "" {
 			log.Print("Web UI is at http://" + ip + ":4449")
-			fmt.Println("Web UI is at http://" + ip + ":4449")
 
 			err := client.VmAgentSetLauncherVersion(ip)
 			if err != nil {

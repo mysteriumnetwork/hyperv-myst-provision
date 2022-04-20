@@ -22,7 +22,7 @@ import (
 )
 
 // handlerFunc talks to a connected client.
-type handlerFunc func(conn io.ReadWriter)
+type handlerFunc func(conn io.ReadWriteCloser)
 
 // Options for transport.
 type Options struct {

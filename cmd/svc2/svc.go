@@ -88,6 +88,7 @@ func main() {
 		enableVM(conn, *flags.FlagImportVMPreferEthernet, "", "")
 
 	} else if *flags.FlagWinService {
+
 		cfg := new(model.Config)
 		cfg.Read()
 
@@ -96,7 +97,7 @@ func main() {
 			log.Fatal().Err(err).Msg("Error NewVMManager: " + err.Error())
 		}
 		logOpts := logconfig.LogOptions{
-			LogLevel: "info",
+			LogLevel: "debug",
 			Filepath: "",
 		}
 		if err := logconfig.Configure(logOpts); err != nil {
@@ -108,21 +109,22 @@ func main() {
 		if err := svc.Start(transport.Options{WinService: *flags.FlagWinService}); err != nil {
 			log.Fatal().Err(err).Msg("Error running MysteriumVMSvc")
 		}
+
 	} else {
 
 		if !w32.SHIsUserAnAdmin() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
+
 			homeDir, _ := os.UserHomeDir()
 			keystorePath := fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
 			if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
 				log.Info().Msg("Keystore not found")
 				return
 			}
-
 			platformMgr, _ := platform.NewManager()
-			err := platformMgr.EnableVirtualBox()
+			err = platformMgr.EnableVirtualBox()
 			if err != nil {
 				log.Fatal().Err(err).Msg("Failed to enable VirtualBox")
 			}
@@ -130,9 +132,7 @@ func main() {
 			for {
 				fmt.Println("Select an action")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("1  Enable node VM and use Ethernet connection")
-				fmt.Println("2  Enable node VM and use Wifi connection (experimental; see the README)")
-				fmt.Println("3  Enable node VM (select adapter manually)")
+				fmt.Println("1  Enable node VM (select adapter automatically)")
 				fmt.Println("4  Disable node VM")
 				fmt.Println("5  Update node")
 				fmt.Println("")
@@ -142,7 +142,7 @@ func main() {
 
 				var conn net.Conn
 				switch k {
-				case "1", "2", "3", "4", "5":
+				case "1", "4", "5":
 					err = installSvc()
 					if err != nil {
 						log.Fatal().Err(err).Msg("Install service")
@@ -154,22 +154,22 @@ func main() {
 				}
 
 				switch k {
-				case "1", "2":
+				case "1":
 					err = enableVM(conn, k == "1", "", "")
 					if err != nil {
 						log.Fatal().Err(err).Msg("Enable VM")
 					}
 
-				case "3":
-					ID, Name, err := selectAdapter(conn)
-					if err != nil {
-						log.Fatal().Err(err).Msg("Select adapter")
-					}
-
-					err = enableVM(conn, false, ID, Name)
-					if err != nil {
-						log.Fatal().Err(err).Msg("Enable VM")
-					}
+				//case "3":
+				//	ID, Name, err := selectAdapter(conn)
+				//	if err != nil {
+				//		log.Fatal().Err(err).Msg("Select adapter")
+				//	}
+				//
+				//	err = enableVM(conn, false, ID, Name)
+				//	if err != nil {
+				//		log.Fatal().Err(err).Msg("Enable VM")
+				//	}
 
 				case "4":
 					disableVM(conn)
@@ -254,7 +254,6 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 		ip, ok := data["IP"].(string)
 		if ok && ip != "" {
 			log.Print("Web UI is at http://" + ip + ":4449")
-			fmt.Println("Web UI is at http://" + ip + ":4449")
 
 			err := utils.Retry(5, 1*time.Second, func() error {
 				return client.VmAgentSetLauncherVersion(ip)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/provisioner"
-	"github.com/mysteriumnetwork/myst-launcher/utils"
+	// "github.com/mysteriumnetwork/myst-launcher/utils"
 )
 
 type ProgressFunc func(progress int)
@@ -44,29 +44,29 @@ func (m *Manager) DownloadRelease(opt DownloadOptions, pf ProgressFunc) (string,
 	}
 
 	log.Println("downloadAgain>", downloadAgain)
-	if downloadAgain {
-		assetName, assetUrl := "", ""
-		for _, a := range releases[0].Assets {
+	// if downloadAgain {
+	// 	assetName, assetUrl := "", ""
+	// 	for _, a := range releases[0].Assets {
 
-			if a.Name == assetAlpineImg {
-				assetName, assetUrl = a.Name, a.BrowserDownloadUrl
-				break
-			}
-		}
+	// 		if a.Name == assetAlpineImg {
+	// 			assetName, assetUrl = a.Name, a.BrowserDownloadUrl
+	// 			break
+	// 		}
+	// 	}
 
-		err = utils.DownloadFile(assetName, assetUrl, func(progress int) {
-			if pf != nil {
-				pf(progress)
-			}
+	// 	err = utils.DownloadFile(assetName, assetUrl, func(progress int) {
+	// 		if pf != nil {
+	// 			pf(progress)
+	// 		}
 
-			if progress%10 == 0 {
-				log.Println(fmt.Sprintf("%s - %d%%", assetName, progress))
-			}
-		})
-		if err != nil {
-			return "", err
-		}
-	}
+	// 		if progress%10 == 0 {
+	// 			log.Println(fmt.Sprintf("%s - %d%%", assetName, progress))
+	// 		}
+	// 	})
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+	// }
 
 	uz := unzip.New()
 	files, err := uz.Extract(assetAlpineImg, `.\vhdx`)

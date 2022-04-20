@@ -24,6 +24,8 @@ type ImportOptions struct {
 	PreferEthernet       bool
 	AdapterID            string
 	AdapterName          string
+
+	//UseMinAdapterFlag bool
 }
 
 type VMInfo struct {
@@ -43,7 +45,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 
 	aa, _ := m.SelectAdapter()
 	for _, a := range aa {
-		if (a.NetType == "Wi-Fi" && !opt.PreferEthernet) || (a.NetType != "Wi-Fi" && opt.PreferEthernet) {
+		if (a.NetType == 9 && !opt.PreferEthernet) || (a.NetType != 0 && opt.PreferEthernet) {
 			opt.AdapterID = a.ID
 			opt.AdapterName = a.Name
 
@@ -103,7 +105,6 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	if err != nil {
 		return errors.Wrap(err, "VmAgentGetState")
 	}
-	log.Println("VmAgentGetState>>>")
 
 	log.Println("keystorePath >", keystorePath)
 	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
