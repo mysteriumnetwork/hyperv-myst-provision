@@ -17,6 +17,7 @@ type Config struct {
 	Enabled      bool   `json:"enabled"`
 	AdapterID    string `json:"adapter-id"`
 	ImageVersion string `json:"image_version"`
+	KeystorePath string `json:"keystore-path"`
 }
 
 func (c *Config) getDefaultValues() {

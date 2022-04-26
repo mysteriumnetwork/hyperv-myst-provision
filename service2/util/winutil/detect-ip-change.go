@@ -78,9 +78,8 @@ func (n *Notifier) WaitForIPChange() error {
 		return errors.Wrap(err, "NotifyAddrChange")
 	}
 
-	// wait 10 seconds
 	t := 0xFFFFFFFF
-	//t := 1000 * 10
+	//t := 1000 * 10 // wait 10 seconds
 	event, err := windows.WaitForSingleObject(n.overlapped.HEvent, uint32(t))
 	if err != nil {
 		return errors.Wrap(err, "WaitForSingleObject")

@@ -529,12 +529,12 @@ func (m *Manager) RemoveVM() error {
 		return nil
 	}
 	if err != nil {
-		return errors.Wrap(err, "GetVM")
+		return errors.Wrap(err, "getVM")
 	}
 
 	vmPath, err := vm.Path()
 	if err != nil {
-		return errors.Wrap(err, "GetVM")
+		return errors.Wrap(err, "getVM")
 	}
 
 	// stop

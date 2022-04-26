@@ -24,8 +24,8 @@ func VmAgentSetLauncherVersion(ip string) error {
 		log.Err(err).Msg("Send http request")
 		return nil
 	}
-	if resp.Status != "200" {
-		log.Error().Msgf("Status %v: %v", resp.Status, ep)
+	if resp.StatusCode != 200 {
+		log.Error().Msgf("Status %v: %v", resp.StatusCode, ep)
 	}
 	return nil
 }

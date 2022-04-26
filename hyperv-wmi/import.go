@@ -2,13 +2,15 @@ package hyperv_wmi
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
+
+	consts "github.com/mysteriumnetwork/hyperv-node/const"
 
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
 	"github.com/pkg/errors"
@@ -78,7 +80,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 		if err != nil {
 			return errors.Wrap(err, "UserHomeDir")
 		}
-		keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
+		keystorePath = path.Join(homeDir, consts.KeystorePath)
 	}
 	if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
 		return errors.Wrap(err, "Keystore not found")

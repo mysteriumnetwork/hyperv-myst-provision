@@ -4,30 +4,38 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gabriel-samfira/go-wmi/wmi"
 	"github.com/pkg/errors"
+
+	//"github.com/rs/zerolog/log"
 	"github.com/terra-farm/go-virtualbox"
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service2/util/winutil"
+	"github.com/mysteriumnetwork/hyperv-node/utils"
 )
 
 const (
 	macAddress = "00155D21A42C"
-	VM         = "Myst VM (alpine)"
+	VMname     = "Myst VM (alpine)"
 
 	KeyOSProd       = "/VirtualBox/GuestInfo/OS/Product"
 	KeyIPv4         = "/VirtualBox/GuestInfo/Net/0/V4/IP"
 	KeyInternalIPv4 = "/VirtualBox/GuestInfo/Net/1/V4/IP"
+
+	VMBootPollSeconds    = 3
+	VMBootTimeoutMinutes = 1
 )
 
 type Manager struct {
 	cfg     *model.Config
 	vmName  string
-	cimv2   *wmi.WMI
+	cimV2   *wmi.WMI
 	rootWmi *wmi.WMI
 
 	// guest KV map
@@ -36,6 +44,10 @@ type Manager struct {
 	// ethernet notifier
 	notifier   winutil.Notifier
 	MinAdapter Adapter
+
+	// restrict concurrent VM start
+	mu sync.Mutex
+	id uint32 // operation counter - to detect concurrent operations
 }
 
 // NewVMManager returns a new Manager type
@@ -44,6 +56,7 @@ func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	rootWmi, err := wmi.NewConnection(".", `root\WMI`)
 	if err != nil {
 		return nil, err
@@ -53,7 +66,7 @@ func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 	sw := &Manager{
 		vmName:   vmName,
 		cfg:      cfg,
-		cimv2:    cimv2,
+		cimV2:    cimv2,
 		rootWmi:  rootWmi,
 		Kvp:      nil,
 		notifier: n,
@@ -61,34 +74,32 @@ func NewVMManager(vmName string, cfg *model.Config) (*Manager, error) {
 	return sw, nil
 }
 
-func (mn *Manager) GetVM() (*virtualbox.Machine, error) {
-	m, err := virtualbox.GetMachine(VM)
-	return m, err
+func (m *Manager) getVM() (*virtualbox.Machine, error) {
+	vm, err := virtualbox.GetMachine(VMname)
+	return vm, err
 }
 
-func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
+func (m *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	log.Println("CreateVM >>", opt)
 	cwd, _ := os.Getwd()
 	log.Println(cwd)
 
-	m, err := virtualbox.CreateMachine(VM, cwd)
-	log.Println("CreateVM >>", m, err)
+	vm, err := virtualbox.CreateMachine(VMname, cwd)
 	if errors.Is(err, virtualbox.ErrMachineExist) {
-		m, err = virtualbox.GetMachine(VM)
-		log.Println("m>>", m, err)
+		vm, err = virtualbox.GetMachine(VMname)
+		log.Println("vm>", vm, err)
 	}
-	log.Println("CreateVM >>", m)
 
-	m.Flag |= virtualbox.IOAPIC
-	m.Flag |= virtualbox.RTCUSEUTC
-	m.Flag |= virtualbox.ACPI
-	m.Firmware = "EFI"
-	m.OSType = "Linux_64"
-	m.BootOrder = []string{"disk", "none", "none", "none"}
-	m.Memory = 256
-	m.Modify()
+	vm.Flag |= virtualbox.IOAPIC
+	vm.Flag |= virtualbox.RTCUSEUTC
+	vm.Flag |= virtualbox.ACPI
+	vm.Firmware = "EFI"
+	vm.OSType = "Linux_64"
+	vm.BootOrder = []string{"disk", "none", "none", "none"}
+	vm.Memory = 256
+	vm.Modify()
 
-	err = m.SetNIC(1, virtualbox.NIC{
+	err = vm.SetNIC(1, virtualbox.NIC{
 		Network:       virtualbox.NICNetBridged,
 		Hardware:      virtualbox.VirtIO,
 		HostInterface: opt.AdapterName,
@@ -97,7 +108,7 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	log.Println("SetNIC", err)
 
 	// define internal host-only network
-	err = m.SetNIC(2, virtualbox.NIC{
+	err = vm.SetNIC(2, virtualbox.NIC{
 		Network:       virtualbox.NICNetHostonly,
 		Hardware:      virtualbox.VirtIO,
 		HostInterface: "VirtualBox Host-Only Ethernet Adapter",
@@ -105,8 +116,8 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	})
 	log.Println("SetNIC", err)
 
-	storageCtl := VM + "_IDE_1"
-	err = m.AddStorageCtl(storageCtl, virtualbox.StorageController{
+	storageCtl := VMname + "_IDE_1"
+	err = vm.AddStorageCtl(storageCtl, virtualbox.StorageController{
 		SysBus:      virtualbox.SysBusIDE,
 		Ports:       2,
 		Chipset:     "PIIX4",
@@ -118,16 +129,16 @@ func (mn *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	img := filepath.Join(cwd, `vhdx\alpine-vm-disk.vdi`)
 	log.Println("img >", img)
 
-	err = m.AttachStorage(storageCtl, virtualbox.StorageMedium{Port: 0, Device: 0, DriveType: virtualbox.DriveHDD, Medium: img})
+	err = vm.AttachStorage(storageCtl, virtualbox.StorageMedium{Port: 0, Device: 0, DriveType: virtualbox.DriveHDD, Medium: img})
 	log.Println("AttachStorage", err)
 
 	return nil
 }
 
-func (mn *Manager) SetNicAndRestartVM() error {
+func (m *Manager) SetNicAndRestartVM() error {
 	log.Println("Manager !SetNicAndRestartVM")
 
-	vm, err := mn.GetVM()
+	vm, err := m.getVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -135,42 +146,115 @@ func (mn *Manager) SetNicAndRestartVM() error {
 		return err
 	}
 
-	err = vm.SetNIC(1, virtualbox.NIC{
-		Network:       virtualbox.NICNetBridged,
-		Hardware:      virtualbox.VirtIO,
-		HostInterface: mn.MinAdapter.Name,
-		MacAddr:       macAddress,
+	err = utils.Retry(5, 1*time.Second, func() error {
+		err := vm.SetNIC(1, virtualbox.NIC{
+			Network:       virtualbox.NICNetBridged,
+			Hardware:      virtualbox.VirtIO,
+			HostInterface: m.MinAdapter.Name,
+			MacAddr:       macAddress,
+		})
+		log.Println("Manager !SetNicAndRestartVM !SetNIC", err)
+		return err
 	})
-	log.Println("Manager !SetNicAndRestartVM !SetNIC", err)
 
 	if err = vm.Start(); err != nil {
 		return err
 	}
-
-	virtualbox.SetGuestProperty(VM, KeyIPv4, "")
+	virtualbox.SetGuestProperty(VMname, KeyIPv4, "")
 	return nil
 }
 
-func (mn *Manager) StartVM() error {
+func (m *Manager) actionExecutor(action func() error, actName string) error {
+
+	nextID := atomic.AddUint32(&m.id, 1)
+	log.Printf("%s > nextID %d ", actName, nextID)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	ID := atomic.LoadUint32(&m.id)
+	log.Printf("%s > nextID %d ID %d", actName, nextID, ID)
+
+	if ID == nextID {
+		err := action()
+		atomic.AddUint32(&m.id, 1)
+		return err
+	} else {
+		log.Println("Concurrent action detected")
+		atomic.AddUint32(&m.id, 1)
+	}
+	return nil
+}
+
+// always restart
+func (m *Manager) RestartVMAndWait() error {
+
+	// start VM only if network is online
+	if !m.IsNetworkOnline() {
+		err := errors.New("Network is not online")
+		return err
+	}
+
+	action := func() error {
+		err := m.SetNicAndRestartVM()
+		if err != nil {
+			log.Println("SetNicAndRestartVM failed")
+			return err
+		}
+		m.WaitVMReady()
+		m.ImportKeystore(nil)
+		m.SetLauncherVersion()
+		return nil
+	}
+	return m.actionExecutor(action, "RestartVMAndWait")
+}
+
+func (m *Manager) StartVM() error {
 	log.Println("Manager !StartVM")
-	vm, err := mn.GetVM()
+	vm, err := m.getVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
 	err = vm.Start()
 
-	virtualbox.SetGuestProperty(VM, KeyIPv4, "")
+	virtualbox.SetGuestProperty(VMname, KeyIPv4, "")
 	return err
 }
 
-func (mn *Manager) IsNetworkOnline() bool {
+func (m *Manager) WaitVMReady() error {
+	log.Println("Manager !StartVM")
+
+	err := m.WaitUntilBoot(
+		time.Duration(VMBootPollSeconds)*time.Second,
+		time.Duration(VMBootTimeoutMinutes)*time.Minute,
+	)
+	if err != nil {
+		log.Println("WaitUntilBoot", err)
+		return errors.Wrap(err, "WaitUntilBoot")
+	}
+	log.Println("WaitUntilBoot OK>")
+
+	err = m.WaitUntilGotIP(
+		time.Duration(VMBootPollSeconds)*time.Second,
+		time.Duration(VMBootTimeoutMinutes)*time.Minute,
+	)
+	if err != nil {
+		log.Println("WaitUntilGotIP", err)
+		return errors.Wrap(err, "WaitUntilBoot")
+	}
+	log.Println("WaitUntilGotIP OK>")
+
+	return err
+}
+
+func (m *Manager) IsNetworkOnline() bool {
 	log.Println("Manager !IsNetworkOnline")
-	return mn.MinAdapter.Metric > 0
+	return m.MinAdapter.Metric > 0
 }
 
 func (m *Manager) StopVM() error {
 	log.Println("StopVM")
-	vm, err := m.GetVM()
+	vm, err := m.getVM()
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
@@ -183,7 +267,7 @@ func (m *Manager) GetGuestKVP() error {
 	m.Kvp = make(model.KVMap)
 
 	getKey := func(keySpec, key string) error {
-		val, err := virtualbox.GetGuestProperty(VM, keySpec)
+		val, err := virtualbox.GetGuestProperty(VMname, keySpec)
 		if err != nil && err.Error() != "No match with get guestproperty output" {
 			log.Println("GetGuestProperty", err)
 			return err
@@ -212,8 +296,18 @@ func (m *Manager) EnableGuestServices() error {
 func (m *Manager) CopyFile(src string) error {
 	log.Println("CopyFile>", src)
 
-	ip := m.Kvp["IP"].(string)
+	ip := m.Kvp["IP_int"].(string)
 	err := client.VmAgentUploadKeystore(ip, src)
+	return err
+}
+
+func (m *Manager) SetLauncherVersion() error {
+	log.Println("SetLauncherVersion>")
+
+	ip := m.Kvp["IP_int"].(string)
+	err := utils.Retry(5, 1*time.Second, func() error {
+		return client.VmAgentSetLauncherVersion(ip)
+	})
 	return err
 }
 
@@ -229,9 +323,9 @@ func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
 				return errors.Wrap(err, "GetGuestKVP")
 			}
 
-			ip := m.Kvp["IP"]
+			ip := m.Kvp["IP_int"]
 			if ip != nil && ip != "" {
-				log.Println("VM IP:", ip)
+				log.Println("VM IP_int:", ip)
 				return nil
 			}
 
@@ -271,13 +365,13 @@ func (m *Manager) WaitUntilBoot(pollEvery, timeout time.Duration) error {
 }
 
 func (m *Manager) RemoveVM() error {
-	vm, err := m.GetVM()
+	vm, err := m.getVM()
 	if errors.Is(err, virtualbox.ErrMachineNotExist) {
 		return nil
 	}
 	if err != nil {
-		log.Println("GetVM", vm, err)
-		return errors.Wrap(err, "GetVM")
+		log.Println("getVM", vm, err)
+		return errors.Wrap(err, "getVM")
 	}
 
 	err = vm.Delete()

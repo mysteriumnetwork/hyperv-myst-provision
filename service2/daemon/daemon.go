@@ -38,7 +38,7 @@ type Daemon struct {
 	importInProgress bool
 	cfg              *model.Config
 
-	state int
+	//vmIsEnabled int
 }
 
 // New creates a new daemon.
@@ -53,11 +53,9 @@ func New(manager *vbox.Manager, cfg *model.Config) Daemon {
 func (d *Daemon) Start(options transport2.Options) error {
 	log.Info().Msgf("Daemon !Start > %v", options)
 
-	if d.cfg.Enabled {
-		d.state = 1
-		// 	err := d.mgr.StartVM()
-		// 	log.Info().Msgf("Daemon !StartVM %v", err)
-	}
+	//if d.cfg.Enabled {
+	//	d.vmIsEnabled = 1
+	//}
 
 	networkChangeChn := make(chan bool)
 	go d.mgr.MonitorNetwork(networkChangeChn)
@@ -68,14 +66,11 @@ func (d *Daemon) Start(options transport2.Options) error {
 				log.Info().Msgf("> networkChangeEv >>>> %v", d.mgr.MinAdapter)
 
 				// network is online: re-start VM (if VM is enabled)
-
-				if d.state == 1 {
-					err := d.mgr.SetNicAndRestartVM()
-					if err != nil {
-						log.Err(err).Msgf("SetNicAndRestartVM failed")
-					}
+				if !d.cfg.Enabled {
+					continue
 				}
 
+				d.mgr.RestartVMAndWait()
 			}
 		}
 	}()
@@ -101,21 +96,12 @@ func (d *Daemon) dialog(conn io.ReadWriteCloser) {
 
 	log.Info().Msg("Daemon !dialog")
 
-	log.Info().Msgf("> Wait for network is ready")
-	//select {
-	//case <-networkChangeChn:
-	//	log.Info().Msgf("> networkChangeEv >>>> %v", d.mgr.MinAdapter)
-	//case <-time.After(3 * time.Second):
-	//	fmt.Println("networkChangeEv timeout")
-	//}
-
 	for {
 		select {
 		case l := <-lines:
 
 			switch line := l.(type) {
 			case []byte:
-				// log.Debug().Msgf("> %s", line)
 				log.Info().Msgf("Daemon !dialog: %v", string(line))
 
 				m := make(map[string]interface{})
@@ -148,7 +134,9 @@ func (d *Daemon) doOperation(op string, answer responder, m map[string]interface
 		answer.pong_()
 
 	case CommandStopVM:
-		d.state = 0
+		d.cfg.Enabled = false
+		d.cfg.Save()
+
 		err := d.mgr.StopVM()
 		if err != nil {
 			log.Err(err).Msgf("%s failed", CommandStopVM)
@@ -158,16 +146,12 @@ func (d *Daemon) doOperation(op string, answer responder, m map[string]interface
 		}
 
 	case CommandStartVM:
-		d.state = 1
+		keystoreDir, _ := m["keystore"].(string)
+		d.cfg.KeystorePath = keystoreDir
+		d.cfg.Enabled = true
+		d.cfg.Save()
 
-		// start VM only if network is online
-		if !d.mgr.IsNetworkOnline() {
-			err := errors.New("Network is not online")
-			log.Err(err).Msgf("%s failed", CommandStartVM)
-			answer.err_(err)
-		}
-
-		err := d.mgr.StartVM()
+		err := d.mgr.RestartVMAndWait()
 		if err != nil {
 			log.Err(err).Msgf("%s failed", CommandStartVM)
 			answer.err_(err)
@@ -177,67 +161,46 @@ func (d *Daemon) doOperation(op string, answer responder, m map[string]interface
 
 	case CommandImportVM:
 		reportProgress, _ := m["report-progress"].(bool)
-		preferEthernet, _ := m["prefer-ethernet"].(bool)
 		keystoreDir, _ := m["keystore"].(string)
-		adapterID, _ := m["adapter-id"].(string)
-		adapterName, _ := m["adapter-name"].(string)
 
+		// prevent parallel runs of import-vm
 		if d.importInProgress {
-			// prevent parallel runs of import-vm
 			answer.err_(errors.New("in progress"))
-		} else {
-			var fn vbox.ProgressFunc
-			if reportProgress {
-				fn = func(progress int) {
-					answer.progress_(CommandImportVM, progress)
-				}
-			}
-			d.importInProgress = true
-
-			vmInfo := new(vbox.VMInfo)
-			err := d.mgr.ImportVM(vbox.ImportOptions{
-				Force:                true, //false,
-				VMBootPollSeconds:    5,
-				VMBootTimeoutMinutes: 1,
-				KeystoreDir:          keystoreDir,
-				PreferEthernet:       preferEthernet,
-				AdapterID:            adapterID,
-				AdapterName:          adapterName,
-			}, fn, vmInfo)
-
-			if err != nil {
-				log.Err(err).Msgf("%s failed >", op)
-				answer.err_(err)
-
-			} else {
-				log.Info().Msgf("vmInfo> %v %v ", vmInfo.AdapterName, vmInfo.NodeIdentity)
-				answer.ok_(vmInfo)
-
-			}
-			d.importInProgress = false
+			return
 		}
 
+		var fn vbox.ProgressFunc
+		if reportProgress {
+			fn = func(progress int) {
+				answer.progress_(CommandImportVM, progress)
+			}
+		}
+		d.importInProgress = true
+
+		vmInfo := new(vbox.VMInfo)
+		err := d.mgr.ImportVM(vbox.ImportOptions{
+			Force:        true,
+			KeystorePath: keystoreDir,
+		}, fn, vmInfo)
+
+		if err != nil {
+			log.Err(err).Msgf("%s failed >", op)
+			answer.err_(err)
+
+		} else {
+			log.Info().Msgf("vmInfo> %v %v ", vmInfo.AdapterName, vmInfo.NodeIdentity)
+			answer.ok_(vmInfo)
+		}
+		d.importInProgress = false
+
 	case CommandGetAdapters:
-		l, err := d.mgr.SelectAdapter()
+		l, err := d.mgr.GetAdapters()
 		if err != nil {
 			log.Err(err).Msgf("%s failed", op)
 			answer.err_(err)
 		} else {
 			answer.ok_(l)
 		}
-
-	//case CommandSetAdapter:
-	//	adapterID, _ := m["adapter-adapterID"].(string)
-	//	d.cfg.AdapterID = adapterID
-	//	d.cfg.Save()
-	//
-	//	l, err := d.mgr.SelectAdapter()
-	//	if err != nil {
-	//		log.Err(err).Msgf("%s failed", op)
-	//		answer.err_(err)
-	//	} else {
-	//		answer.ok_(l)
-	//	}
 
 	case CommandGetVMState:
 		m := make(map[string]interface{})
@@ -267,7 +230,5 @@ func (d *Daemon) doOperation(op string, answer responder, m map[string]interface
 		}
 		client.VmAgentUpdateNode(ip)
 		answer.ok_(d.mgr.Kvp)
-
 	}
-
 }

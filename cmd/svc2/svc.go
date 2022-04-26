@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -51,6 +52,14 @@ func main() {
 	}
 
 	if *flags.FlagInstall {
+
+		// TODO: check admin rights before
+		platformMgr, _ := platform.NewManager()
+		err = platformMgr.EnableVirtualBox()
+		if err != nil {
+			log.Fatal().Err(err).Msg("Failed to enable VirtualBox")
+		}
+
 		path, err := util.ThisPath()
 		if err != nil {
 			log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
@@ -85,7 +94,7 @@ func main() {
 		}
 		defer conn.Close()
 
-		enableVM(conn, *flags.FlagImportVMPreferEthernet, "", "")
+		importVM(conn)
 
 	} else if *flags.FlagWinService {
 
@@ -116,13 +125,6 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
-
-			homeDir, _ := os.UserHomeDir()
-			keystorePath := fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
-			if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
-				log.Info().Msg("Keystore not found")
-				return
-			}
 			platformMgr, _ := platform.NewManager()
 			err = platformMgr.EnableVirtualBox()
 			if err != nil {
@@ -132,20 +134,24 @@ func main() {
 			for {
 				fmt.Println("Select an action")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("1  Enable node VM (select adapter automatically)")
-				fmt.Println("4  Disable node VM")
-				fmt.Println("5  Update node")
+				fmt.Println("1  Import node VM")
+				fmt.Println("2  Enable node VM")
+				fmt.Println("3  Disable node VM")
+				fmt.Println("4  Update node")
 				fmt.Println("")
-				fmt.Println("6  Exit")
+				fmt.Println("5  Exit")
 				fmt.Print("\n> ")
 				k := util.ReadConsole()
 
 				var conn net.Conn
 				switch k {
-				case "1", "4", "5":
-					err = installSvc()
-					if err != nil {
-						log.Fatal().Err(err).Msg("Install service")
+				case "1", "2", "3", "4":
+					homeDir, _ := os.UserHomeDir()
+					keystorePath := path.Join(homeDir, consts.KeystorePath)
+
+					if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
+						log.Info().Msg("Keystore not found")
+						continue
 					}
 					conn, err = connect()
 					if err != nil {
@@ -155,29 +161,24 @@ func main() {
 
 				switch k {
 				case "1":
-					err = enableVM(conn, k == "1", "", "")
+					err = importVM(conn)
+					if err != nil {
+						log.Fatal().Err(err).Msg("Import VM")
+					}
+
+				case "2":
+					err = enableVM(conn)
 					if err != nil {
 						log.Fatal().Err(err).Msg("Enable VM")
 					}
 
-				//case "3":
-				//	ID, Name, err := selectAdapter(conn)
-				//	if err != nil {
-				//		log.Fatal().Err(err).Msg("Select adapter")
-				//	}
-				//
-				//	err = enableVM(conn, false, ID, Name)
-				//	if err != nil {
-				//		log.Fatal().Err(err).Msg("Enable VM")
-				//	}
-
-				case "4":
+				case "3":
 					disableVM(conn)
 
-				case "5":
+				case "4":
 					updateNode(conn)
 
-				case "6":
+				case "5":
 					return
 				}
 			}
@@ -215,21 +216,50 @@ func installSvc() error {
 	return nil
 }
 
-func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
-
-	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
+func importVM(conn net.Conn) error {
+	keystorePath, err := getKeystorePath()
 	if err != nil {
-		log.Err(err).Msg("error getting profile path")
 		return err
 	}
-	keystorePath := homeDir + `\.mysterium\keystore`
+
 	cmd := model.KVMap{
 		"cmd":             daemon.CommandImportVM,
 		"keystore":        keystorePath,
 		"report-progress": true,
-		"prefer-ethernet": preferEthernet,
-		"adapter-id":      ID,
-		"adapter-name":    Name,
+
+		//"prefer-ethernet": preferEthernet,
+		//"adapter-id":      ID,
+		//"adapter-name":    Name,
+	}
+	res := client.SendCommand(conn, cmd)
+	if res["resp"] == "error" {
+		log.Error().Msgf("Send command: %s", res["err"])
+		return err
+	}
+	fmt.Println()
+
+	return nil
+}
+
+func getKeystorePath() (string, error) {
+	homeDir, err := windows.KnownFolderPath(windows.FOLDERID_Profile, windows.KF_FLAG_CREATE)
+	if err != nil {
+		log.Err(err).Msg("error getting profile path")
+		return "", err
+	}
+	keystorePath := path.Join(homeDir, consts.KeystorePath)
+	return keystorePath, nil
+}
+
+func enableVM(conn net.Conn) error {
+	keystorePath, err := getKeystorePath()
+	if err != nil {
+		return err
+	}
+
+	cmd := model.KVMap{
+		"cmd":      daemon.CommandStartVM,
+		"keystore": keystorePath,
 	}
 	res := client.SendCommand(conn, cmd)
 	if res["resp"] == "error" {
@@ -246,7 +276,6 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 	}
 	kv := client.SendCommand(conn, cmd)
 	fmt.Println()
-	// fmt.Println(kv)
 
 	data := model.NewKVMap(kv["data"])
 	if data != nil {
@@ -255,14 +284,7 @@ func enableVM(conn net.Conn, preferEthernet bool, ID, Name string) error {
 		if ok && ip != "" {
 			log.Print("Web UI is at http://" + ip + ":4449")
 
-			err := utils.Retry(5, 1*time.Second, func() error {
-				return client.VmAgentSetLauncherVersion(ip)
-			})
-			if err != nil {
-				return nil
-			}
-
-			time.Sleep(7 * time.Second)
+			time.Sleep(1 * time.Second)
 			util.OpenUrlInBrowser("http://" + ip + ":4449")
 			return nil
 		}

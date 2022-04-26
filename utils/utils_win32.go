@@ -34,6 +34,7 @@ import (
 
 	_const "github.com/mysteriumnetwork/myst-launcher/const"
 	"github.com/mysteriumnetwork/myst-launcher/native"
+	"github.com/mysteriumnetwork/myst-launcher/utils"
 )
 
 const launcherLnk = "Mysterium Node Launcher.lnk"
@@ -348,7 +349,7 @@ func IsWSLUpdated() (bool, error) {
 	}
 	log.Println("IsWSLUpdated > installedVer", installedVer)
 
-	pkg, err := gowin32.OpenInstallerPackage(GetTmpDir() + "\\wsl_update_x64.msi")
+	pkg, err := gowin32.OpenInstallerPackage(utils.GetTmpDir() + "\\wsl_update_x64.msi")
 	if err != nil {
 		return false, errors.Wrap(err, "gowin32.OpenInstallerPackage")
 	}

@@ -22,6 +22,7 @@ const (
 	CommandPing        = "ping"
 	CommandStopVM      = "stop-vm"
 	CommandStartVM     = "start-vm"
+	CommandRestartVM   = "restart-vm"
 	CommandImportVM    = "import-vm"
 	CommandGetKvp      = "get-kvp"
 	CommandGetVMState  = "get-vm-state"

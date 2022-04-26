@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"strconv"
 	"time"
 
@@ -113,12 +114,6 @@ func main() {
 			utils.RunasWithArgsNoWait("")
 			return
 		} else {
-			homeDir, _ := os.UserHomeDir()
-			keystorePath := fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
-			if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
-				log.Info().Msg("Keystore not found")
-				return
-			}
 
 			platformMgr, _ := platform.NewManager()
 			ok, err := platformMgr.Features()
@@ -149,6 +144,14 @@ func main() {
 				var conn net.Conn
 				switch k {
 				case "1", "2", "3", "4", "5":
+					homeDir, _ := os.UserHomeDir()
+					keystorePath := path.Join(homeDir, consts.KeystorePath)
+
+					if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
+						log.Info().Msg("Keystore not found")
+						continue
+					}
+
 					err = installSvc()
 					if err != nil {
 						log.Fatal().Err(err).Msg("Install service")
@@ -227,7 +230,8 @@ func enableVM(conn net.Conn, preferEthernet bool, ID string) error {
 		log.Err(err).Msg("error getting profile path")
 		return err
 	}
-	keystorePath := homeDir + `\.mysterium\keystore`
+	keystorePath := path.Join(homeDir, consts.KeystorePath)
+
 	cmd := hyperv_wmi.KVMap{
 		"cmd":             daemon.CommandImportVM,
 		"keystore":        keystorePath,

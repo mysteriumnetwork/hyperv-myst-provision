@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"path"
 
 	"golang.org/x/sys/windows"
 
@@ -35,7 +36,7 @@ func main() {
 		fmt.Printf("error getting profile path: %v", err)
 		return
 	}
-	keystorePath := homeDir + `\.mysterium\keystore`
+	keystorePath := path.Join(homeDir, consts.KeystorePath)
 
 	conn, err := winio.DialPipe(consts.Sock, nil)
 	if err != nil {

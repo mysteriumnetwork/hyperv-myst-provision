@@ -2,17 +2,19 @@ package vbox
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
+	consts "github.com/mysteriumnetwork/hyperv-node/const"
+
+	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
-	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
-	"github.com/mysteriumnetwork/myst-launcher/utils"
+	"github.com/mysteriumnetwork/hyperv-node/utils"
 	"github.com/pkg/errors"
 )
 
@@ -20,11 +22,10 @@ type ImportOptions struct {
 	Force                bool
 	VMBootPollSeconds    int64
 	VMBootTimeoutMinutes int64
-	KeystoreDir          string
+	KeystorePath         string
 	PreferEthernet       bool
 	AdapterID            string
 	AdapterName          string
-
 	//UseMinAdapterFlag bool
 }
 
@@ -43,7 +44,7 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	}
 	// }
 
-	aa, _ := m.SelectAdapter()
+	aa, _ := m.GetAdapters()
 	for _, a := range aa {
 		if (a.NetType == 9 && !opt.PreferEthernet) || (a.NetType != 0 && opt.PreferEthernet) {
 			opt.AdapterID = a.ID
@@ -58,85 +59,73 @@ func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error
 	if err != nil {
 		return err
 	}
+
 	err = m.CreateVM(vhdFilePath, opt)
 	if err != nil {
 		return errors.Wrap(err, "CreateVM")
 	}
+	m.cfg.KeystorePath = opt.KeystorePath
+	m.cfg.Save()
 
-	// if err = m.EnableGuestServices(); err != nil {
-	// 	return errors.Wrap(err, "EnableGuestServices")
-	// }
-	if err = m.StartVM(); err != nil {
-		return errors.Wrap(err, "StartVM")
-	}
-	// if err = m.StartGuestFileService(); err != nil {
-	// 	return errors.Wrap(err, "StartGuestFileService")
-	// }
+	//if err = m.StartVM(); err != nil {
+	//	return errors.Wrap(err, "StartVM")
+	//}
+	//m.WaitVMReady()
+	//m.ImportKeystore(vi)
 
-	err = m.WaitUntilBoot(
-		time.Duration(opt.VMBootPollSeconds)*time.Second,
-		time.Duration(opt.VMBootTimeoutMinutes)*time.Minute,
-	)
-	if err != nil {
-		log.Println("WaitUntilBoot", err)
-		return errors.Wrap(err, "WaitUntilBoot")
-	}
-	log.Println("WaitUntilBoot OK>")
+	return nil
+}
+
+func (m *Manager) ImportKeystore(vi *VMInfo) error {
 
 	// copy keystore
-	keystorePath := opt.KeystoreDir
-	if opt.KeystoreDir == "" {
+	keystorePath := m.cfg.KeystorePath
+	if keystorePath == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return errors.Wrap(err, "UserHomeDir")
 		}
-		keystorePath = fmt.Sprintf(`%s\%s`, homeDir, `.mysterium\keystore`)
+		keystorePath = path.Join(homeDir, consts.KeystorePath)
 	}
 	if _, err := os.Stat(keystorePath); os.IsNotExist(err) {
 		return errors.Wrap(err, "Keystore not found")
 	}
 
-	//
-	log.Println("VmAgentGetState>")
-	ip := m.Kvp["IP"].(string)
-	err = utils.Retry(5, time.Second, func() error {
+	ip := m.Kvp["IP_int"].(string)
+	err := utils.Retry(5, time.Second, func() error {
 		return client.VmAgentGetState(ip)
 	})
 	if err != nil {
-		return errors.Wrap(err, "VmAgentGetState")
+		return err
 	}
 
 	log.Println("keystorePath >", keystorePath)
-	err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
-		if info.IsDir() {
-			return nil
-		}
-		if info.Name() == "remember.json" {
-			file, _ := ioutil.ReadFile(path)
-			data := struct {
-				Identity struct {
-					Address string `json:"address"`
-				} `json:"identity"`
-			}{}
-			_ = json.Unmarshal([]byte(file), &data)
+	if vi != nil {
+		err = filepath.Walk(keystorePath, func(path string, info fs.FileInfo, _ error) error {
+			if info.IsDir() {
+				return nil
+			}
+			if info.Name() == "remember.json" {
+				file, _ := ioutil.ReadFile(path)
+				data := struct {
+					Identity struct {
+						Address string `json:"address"`
+					} `json:"identity"`
+				}{}
+				_ = json.Unmarshal([]byte(file), &data)
 
-			vi.NodeIdentity = data.Identity.Address
-			vi.OS = winutil.GetWindowsVersion()
+				vi.NodeIdentity = data.Identity.Address
+				vi.OS = winutil.GetWindowsVersion()
+			}
+			return nil
+		})
+		if err != nil {
+			return errors.Wrap(err, "Walk")
 		}
-		return nil
-		// return m.CopyFile(path, keystorePath)
-	})
-	if err != nil {
-		return errors.Wrap(err, "Walk")
 	}
+
 	err = m.CopyFile(keystorePath)
 	log.Println("CopyFile", err)
-
-	err = m.WaitUntilGotIP(
-		time.Duration(opt.VMBootPollSeconds)*time.Second,
-		time.Duration(opt.VMBootTimeoutMinutes)*time.Minute,
-	)
-	// set version
 
 	return nil
 }

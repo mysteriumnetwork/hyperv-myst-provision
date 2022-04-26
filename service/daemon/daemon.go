@@ -159,7 +159,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 		//	d.cfg.AdapterID = adapterID
 		//	d.cfg.Save()
 		//
-		//	l, err := d.mgr.SelectAdapter()
+		//	l, err := d.mgr.GetAdapters()
 		//	if err != nil {
 		//		log.Err(err).Msgf("%s failed", op)
 		//		answer.err_(err)
