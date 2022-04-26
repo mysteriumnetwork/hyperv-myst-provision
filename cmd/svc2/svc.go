@@ -52,7 +52,6 @@ func main() {
 	}
 
 	if *flags.FlagInstall {
-
 		// TODO: check admin rights before
 		platformMgr, _ := platform.NewManager()
 		err = platformMgr.EnableVirtualBox()
@@ -60,18 +59,7 @@ func main() {
 			log.Fatal().Err(err).Msg("Failed to enable VirtualBox")
 		}
 
-		path, err := util.ThisPath()
-		if err != nil {
-			log.Fatal().Err(err).Msg("Failed to determine MysteriumVMSvc path")
-		}
-		options := install.Options{
-			ExecuatblePath: path,
-		}
-		log.Info().Msgf("Installing supervisor with options: %#v", options)
-		if err = install.Install(options); err != nil {
-			log.Fatal().Err(err).Msg("Failed to install MysteriumVMSvc")
-		}
-		log.Info().Msg("Supervisor installed")
+		installSvc()
 
 	} else if *flags.FlagUninstall {
 		conn, err := connect()
@@ -81,11 +69,7 @@ func main() {
 		defer conn.Close()
 		disableVM(conn)
 
-		log.Info().Msg("Uninstalling MysteriumVMSvc")
-		if err := install.Uninstall(); err != nil {
-			log.Fatal().Err(err).Msg("Failed to uninstall MysteriumVMSvc")
-		}
-		log.Info().Msg("MysteriumVMSvc uninstalled")
+		uninstallSvc()
 
 	} else if *flags.FlagImportVM {
 		conn, err := connect()
@@ -134,18 +118,20 @@ func main() {
 			for {
 				fmt.Println("Select an action")
 				fmt.Println("----------------------------------------------")
-				fmt.Println("1  Import node VM")
-				fmt.Println("2  Enable node VM")
-				fmt.Println("3  Disable node VM")
-				fmt.Println("4  Update node")
+				fmt.Println("1  Install DualMode service")
+				fmt.Println("2  Uninstall DualMode service")
+				fmt.Println("3  Import node VM")
+				fmt.Println("4  Enable node VM")
+				fmt.Println("5  Disable node VM")
+				fmt.Println("6  Update node")
 				fmt.Println("")
-				fmt.Println("5  Exit")
+				fmt.Println("7  Exit")
 				fmt.Print("\n> ")
 				k := util.ReadConsole()
 
 				var conn net.Conn
 				switch k {
-				case "1", "2", "3", "4":
+				case "3", "4", "5", "6":
 					homeDir, _ := os.UserHomeDir()
 					keystorePath := path.Join(homeDir, consts.KeystorePath)
 
@@ -161,24 +147,29 @@ func main() {
 
 				switch k {
 				case "1":
+					installSvc()
+				case "2":
+					uninstallSvc()
+
+				case "3":
 					err = importVM(conn)
 					if err != nil {
 						log.Fatal().Err(err).Msg("Import VM")
 					}
 
-				case "2":
+				case "4":
 					err = enableVM(conn)
 					if err != nil {
 						log.Fatal().Err(err).Msg("Enable VM")
 					}
 
-				case "3":
+				case "5":
 					disableVM(conn)
 
-				case "4":
+				case "6":
 					updateNode(conn)
 
-				case "5":
+				case "7":
 					return
 				}
 			}
@@ -208,11 +199,20 @@ func installSvc() error {
 	options := install.Options{
 		ExecuatblePath: path,
 	}
-	log.Info().Msgf("Installing supervisor with options: %#v", options)
+	log.Info().Msgf("Installing dual-mode helper with options: %#v", options)
 	if err = install.Install(options); err != nil {
 		return errors.Wrap(err, "Failed to install MysteriumVMSvc")
 	}
 	log.Info().Msg("MysteriumVMSvc installed")
+	return nil
+}
+
+func uninstallSvc() error {
+	log.Info().Msgf("Installing dual-mode helper")
+	if err := install.Uninstall(); err != nil {
+		return errors.Wrap(err, "Failed to uninstall MysteriumVMSvc")
+	}
+	log.Info().Msg("MysteriumVMSvc uninstalled")
 	return nil
 }
 
@@ -318,7 +318,7 @@ func updateNode(conn net.Conn) {
 
 }
 
-// returns: adapter ID, Name
+//returns: adapter ID, Name
 func selectAdapter(conn net.Conn) (string, string, error) {
 	cmd := model.KVMap{
 		"cmd": daemon.CommandGetAdapters,
