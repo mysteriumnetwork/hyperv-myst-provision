@@ -96,6 +96,10 @@ func (r *ProcessRunner) Start(start chan bool) error {
 
 			case "stop":
 				r.isStopped = true
+				if r.cmd == nil {
+					log.Println("stop > r.cmd==nil")
+					break
+				}
 				err := r.cmd.Process.Kill()
 				log.Println("stop >", err)
 
