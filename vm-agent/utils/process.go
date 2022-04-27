@@ -78,8 +78,8 @@ func (r *ProcessRunner) Start(start chan bool) error {
 				log.Print("process finished successfully")
 			}
 
-			time.Sleep(2 * time.Second)
 			if !r.isStopped {
+				time.Sleep(2 * time.Second)
 				if err := r.runCmd(); err != nil {
 					return err
 				}
@@ -95,11 +95,12 @@ func (r *ProcessRunner) Start(start chan bool) error {
 				return nil
 
 			case "stop":
-				r.isStopped = true
 				if r.cmd == nil {
 					log.Println("stop > r.cmd==nil")
 					break
 				}
+
+				r.isStopped = true
 				err := r.cmd.Process.Kill()
 				log.Println("stop >", err)
 
