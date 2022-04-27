@@ -26,8 +26,8 @@ cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 sed 's/#PermitRootLogin.*$/PermitRootLogin yes/' /etc/ssh/sshd_config > /etc/ssh/sshd_config
 rc-service sshd restart
 
-# Random setup of repos
-setup-apkrepos -r
+# Pick first in the list
+setup-apkrepos -1
 
 setup-ntp -c busybox
 
