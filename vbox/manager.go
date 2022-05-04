@@ -85,6 +85,8 @@ func (m *Manager) CreateVM(vhdFilePath string, opt ImportOptions) error {
 	log.Println(cwd)
 
 	vm, err := virtualbox.CreateMachine(VMname, cwd)
+	log.Println(vm, err)
+
 	if errors.Is(err, virtualbox.ErrMachineExist) {
 		vm, err = virtualbox.GetMachine(VMname)
 		log.Println("vm>", vm, err)
@@ -371,8 +373,11 @@ func (m *Manager) RemoveVM() error {
 	}
 	if err != nil {
 		log.Println("getVM", vm, err)
-		return errors.Wrap(err, "getVM")
+		return errors.Wrap(err, "RemoveVM")
 	}
+
+	//cmd := exec.CommandContext()
+	//cmd.Run()
 
 	err = vm.Delete()
 	return err

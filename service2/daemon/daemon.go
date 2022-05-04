@@ -27,6 +27,7 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
 	transport2 "github.com/mysteriumnetwork/hyperv-node/service2/daemon/transport"
+	"github.com/mysteriumnetwork/hyperv-node/service2/util"
 	"github.com/mysteriumnetwork/hyperv-node/vbox"
 
 	"github.com/rs/zerolog/log"
@@ -51,26 +52,27 @@ func New(manager *vbox.Manager, cfg *model.Config) Daemon {
 
 // Start the daemon. Blocks.
 func (d *Daemon) Start(options transport2.Options) error {
+	defer util.PanicHandler("dialog_")
 	log.Info().Msgf("Daemon !Start > %v", options)
 
-	//if d.cfg.Enabled {
-	//	d.vmIsEnabled = 1
-	//}
-
-	networkChangeChn := make(chan bool)
+	networkChangeChn := make(chan vbox.NetworkEv)
 	go d.mgr.MonitorNetwork(networkChangeChn)
 	go func() {
 		for {
 			select {
-			case <-networkChangeChn:
-				log.Info().Msgf("> networkChangeEv >>>> %v", d.mgr.MinAdapter)
+			case ev := <-networkChangeChn:
+				if ev == vbox.NetworkChangeMedia {
+					log.Info().Msgf("> networkChangeEv >>>> %v", d.mgr.MinAdapter)
+					// network is online: re-start VM (if VM is enabled)
+					if !d.cfg.Enabled {
+						continue
+					}
+					d.mgr.RestartVMAndWait()
 
-				// network is online: re-start VM (if VM is enabled)
-				if !d.cfg.Enabled {
-					continue
+				} else {
+					// call vm agent
+
 				}
-
-				d.mgr.RestartVMAndWait()
 			}
 		}
 	}()
@@ -109,9 +111,7 @@ func (d *Daemon) dialog(conn io.ReadWriteCloser) {
 				// fmt.Println(m, err)
 
 				op := strings.ToLower(m["cmd"].(string))
-				log.Info().Msg("Daemon !dialog !doOperation")
 				d.doOperation(op, answer, m)
-				log.Info().Msg("Daemon !dialog !doOperation")
 
 			case error:
 				// here v has type S
@@ -125,6 +125,7 @@ func (d *Daemon) dialog(conn io.ReadWriteCloser) {
 }
 
 func (d *Daemon) doOperation(op string, answer responder, m map[string]interface{}) {
+	log.Info().Msg("Daemon !doOperation")
 
 	switch op {
 	case CommandVersion:

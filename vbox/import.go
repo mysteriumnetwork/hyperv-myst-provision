@@ -38,11 +38,9 @@ type VMInfo struct {
 func (m *Manager) ImportVM(opt ImportOptions, pf ProgressFunc, vi *VMInfo) error {
 	log.Println("ImportVM >", opt)
 
-	// if opt.Force {
 	if err := m.RemoveVM(); err != nil {
 		return errors.Wrap(err, "RemoveVM")
 	}
-	// }
 
 	aa, _ := m.GetAdapters()
 	for _, a := range aa {

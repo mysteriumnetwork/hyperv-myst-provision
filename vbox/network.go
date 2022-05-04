@@ -20,13 +20,15 @@ type Adapter struct {
 	Name    string
 	NetType int
 	Metric  int
+	IPs     string
 }
 
-func (a *Adapter) Set(id, name string, netType int, metr int) {
+func (a *Adapter) Set(id, name string, netType int, metr int, ips string) {
 	a.ID = id
 	a.Name = name
 	a.NetType = netType
 	a.Metric = metr
+	a.IPs = ips
 }
 
 func (m *Manager) GetAdapters() ([]Adapter, error) {
@@ -58,26 +60,34 @@ func (m *Manager) GetAdapters() ([]Adapter, error) {
 	return list, nil
 }
 
-func (m *Manager) AdapterHasIPAddress(adapter *wmi.Result) (int, error) {
-	// fmt.Println("AdapterHasIPAddress >")
+func ArrayToStr(a []interface{}) string {
+	v := ""
+	for _, k := range a {
+		v += k.(string) + ","
+	}
+	return v
+}
+
+func (m *Manager) GetAdapterMetrics(adapter *wmi.Result) (int, string, error) {
 	assoc, err := adapter.Get("associators_", nil, "Win32_NetworkAdapterConfiguration")
 	if err != nil {
-		return 0, errors.Wrap(err, "Get")
+		return 0, "", errors.Wrap(err, "Get")
 	}
 	cfg, err := assoc.ItemAtIndex(0)
 	if err != nil {
-		return 0, errors.Wrap(err, "ItemAtIndex")
+		return 0, "", errors.Wrap(err, "ItemAtIndex")
 	}
 
 	met, _ := cfg.GetProperty("IPConnectionMetric")
-	if met.Value() == nil {
-		// fmt.Println("AdapterHasIPAddress > nil")
-		return 0, nil
-	} else {
-		v := met.Value().(int32)
-		// fmt.Println("AdapterHasIPAddress >", v)
-		return int(v), nil
+	v, _ := met.Value().(int32)
+
+	adr, _ := cfg.GetProperty("IPAddress")
+	aa := ""
+	arr := adr.ToArray()
+	if arr != nil {
+		aa = ArrayToStr(arr.ToValueArray())
 	}
+	return int(v), aa, nil
 }
 
 func (m *Manager) GetAdapterType(adapterName string) (int, error) {
@@ -108,8 +118,16 @@ func (m *Manager) GetAdapter(ID string) (*wmi.Result, error) {
 	return res, nil
 }
 
+///////////////
+type NetworkEv int
+
+const (
+	NetworkChangeIP    = NetworkEv(1)
+	NetworkChangeMedia = NetworkEv(2)
+)
+
 // If old chosen adapter goes offline, find a new one with minimal metric
-func (m *Manager) MonitorNetwork(networkChangeEv chan bool) error {
+func (m *Manager) MonitorNetwork(networkChangeEv chan NetworkEv) error {
 	defer util.PanicHandler("monitor_")
 	log.Info().Msg("Monitor network")
 
@@ -139,52 +157,61 @@ func (m *Manager) MonitorNetwork(networkChangeEv chan bool) error {
 			pnpDeviceID, ok := pnpDeviceID_.Value().(string)
 			if !ok {
 				log.Info().Msg("")
-				log.Info().Msgf("Monitor network >", id, name, pnpDeviceID)
+				log.Info().Msgf("Monitor network >", id, name, pnpDeviceID_.Value())
 				//continue
 			}
 			if strings.HasPrefix(pnpDeviceID, `ROOT\`) || strings.HasPrefix(pnpDeviceID, `BTH\`) {
 				continue
 			}
 
-			metr, _ := m.AdapterHasIPAddress(adp)
+			metric, ips, _ := m.GetAdapterMetrics(adp)
 			adapterType, err := m.GetAdapterType(name_.Value().(string))
 			if err != nil {
 				log.Info().Msgf("!list > %v", err)
 				continue
 			}
-			//log.Info().Msgf("Monitor network !list: %v %v", id, metr, name_.Value(), adapterType, pnpDeviceID)
+			//log.Info().Msgf("Monitor network !list: %v %v", id, metric, name_.Value(), adapterType, pnpDeviceID)
 
-			if minAdapter.ID == "" && metr != 0 {
-				minAdapter.Set(id, name, adapterType, metr)
-			}
-			if metr < minAdapter.Metric && metr != 0 {
-				//findNewAdapter = true
-				minAdapter.Set(id, name, adapterType, metr)
+			if metric != 0 {
+				// first assignment
+				if minAdapter.ID == "" {
+					minAdapter.Set(id, name, adapterType, metric, ips)
+				}
+
+				if metric < minAdapter.Metric {
+					minAdapter.Set(id, name, adapterType, metric, ips)
+				}
 			}
 		}
+		//log.Info().Msgf("Monitor network !list > minAdapter : %v", minAdapter)
 
-		log.Info().Msgf("Monitor network !list > minAdapter : %v", minAdapter)
 		// If old adapter lost its metric -- then change adapter
+		// IP has changed
+		if m.MinAdapter.ID == minAdapter.ID && m.MinAdapter.IPs != minAdapter.IPs {
+			log.Info().Msgf("Monitor network > ! IP change detected")
+			m.MinAdapter = minAdapter
+
+			networkChangeEv <- NetworkChangeIP
+		}
 
 		if m.MinAdapter.ID != minAdapter.ID {
 			old, _ := m.GetAdapter(m.MinAdapter.ID)
 			if err != nil {
 				log.Info().Msgf("!GetAdapter > %v", err)
 			}
-			log.Info().Msgf("Monitor network !list > old : %v", old)
+			//log.Info().Msgf("Monitor network !list > old : %v", old)
 
 			oldMetric := 0
 			if old != nil {
-				oldMetric, _ = m.AdapterHasIPAddress(old)
+				oldMetric, _, _ = m.GetAdapterMetrics(old)
 				log.Info().Msgf("Monitor network !list > minAdapter > oldMetric : %v", oldMetric)
 			}
 
 			if oldMetric == 0 && minAdapter.Metric > 0 { // exclude single adapter switch off case
 				m.MinAdapter = minAdapter
 
-				//log.Print("New minAdapter >>>", minAdapter)
-				//log.Info().Msgf("New minAdapter >>> %v", minAdapter)
-				networkChangeEv <- true
+				//log.Info().Msgf("New minAdapter > %v", minAdapter)
+				networkChangeEv <- NetworkChangeMedia
 			}
 		}
 
