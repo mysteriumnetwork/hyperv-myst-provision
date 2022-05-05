@@ -24,9 +24,12 @@ const (
 	macAddress = "00155D21A42C"
 	VMname     = "Myst VM (alpine)"
 
-	KeyOSProd       = "/VirtualBox/GuestInfo/OS/Product"
-	KeyIPv4         = "/VirtualBox/GuestInfo/Net/0/V4/IP"
-	KeyInternalIPv4 = "/VirtualBox/GuestInfo/Net/1/V4/IP"
+	vboxKeyOSProd       = "/VirtualBox/GuestInfo/OS/Product"
+	vboxKeyIPv4         = "/VirtualBox/GuestInfo/Net/0/V4/IP"
+	vboxKeyInternalIPv4 = "/VirtualBox/GuestInfo/Net/1/V4/IP"
+
+	KeyIPInt = "IP_int"
+	KeyIP    = "IP"
 
 	VMBootPollSeconds    = 3
 	VMBootTimeoutMinutes = 1
@@ -144,25 +147,28 @@ func (m *Manager) SetNicAndRestartVM() error {
 	if err != nil {
 		return errors.Wrap(err, "GetOne")
 	}
-	if err = vm.Stop(); err != nil {
-		return err
-	}
 
-	err = utils.Retry(5, 1*time.Second, func() error {
+	err = utils.Retry(10, 2*time.Second, func() error {
+		if err = vm.Stop(); err != nil {
+			log.Println("Manager !SetNicAndRestartVM !vm.Stop", err)
+			return err
+		}
 		err := vm.SetNIC(1, virtualbox.NIC{
 			Network:       virtualbox.NICNetBridged,
 			Hardware:      virtualbox.VirtIO,
 			HostInterface: m.MinAdapter.Name,
 			MacAddr:       macAddress,
 		})
-		log.Println("Manager !SetNicAndRestartVM !SetNIC", err)
+		if err != nil {
+			log.Println("Manager !SetNicAndRestartVM !SetNIC", err)
+		}
 		return err
 	})
 
 	if err = vm.Start(); err != nil {
 		return err
 	}
-	virtualbox.SetGuestProperty(VMname, KeyIPv4, "")
+	virtualbox.SetGuestProperty(VMname, vboxKeyIPv4, "")
 	return nil
 }
 
@@ -219,7 +225,7 @@ func (m *Manager) StartVM() error {
 	}
 	err = vm.Start()
 
-	virtualbox.SetGuestProperty(VMname, KeyIPv4, "")
+	virtualbox.SetGuestProperty(VMname, vboxKeyIPv4, "")
 	return err
 }
 
@@ -280,9 +286,9 @@ func (m *Manager) GetGuestKVP() error {
 			return nil
 		}
 	}
-	getKey(KeyIPv4, "IP")
-	getKey(KeyInternalIPv4, "IP_int")
-	getKey(KeyOSProd, "OS")
+	getKey(vboxKeyIPv4, KeyIP)
+	getKey(vboxKeyInternalIPv4, KeyIPInt)
+	getKey(vboxKeyOSProd, "OS")
 
 	return nil
 }
@@ -298,7 +304,7 @@ func (m *Manager) EnableGuestServices() error {
 func (m *Manager) CopyFile(src string) error {
 	log.Println("CopyFile>", src)
 
-	ip := m.Kvp["IP_int"].(string)
+	ip := m.Kvp[KeyIPInt].(string)
 	err := client.VmAgentUploadKeystore(ip, src)
 	return err
 }
@@ -306,7 +312,7 @@ func (m *Manager) CopyFile(src string) error {
 func (m *Manager) SetLauncherVersion() error {
 	log.Println("SetLauncherVersion>")
 
-	ip := m.Kvp["IP_int"].(string)
+	ip := m.Kvp[KeyIPInt].(string)
 	err := utils.Retry(5, 1*time.Second, func() error {
 		return client.VmAgentSetLauncherVersion(ip)
 	})
@@ -325,7 +331,7 @@ func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
 				return errors.Wrap(err, "GetGuestKVP")
 			}
 
-			ip := m.Kvp["IP_int"]
+			ip := m.Kvp[KeyIPInt]
 			if ip != nil && ip != "" {
 				log.Println("VM IP_int:", ip)
 				return nil

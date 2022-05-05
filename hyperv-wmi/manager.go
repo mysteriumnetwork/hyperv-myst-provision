@@ -13,6 +13,7 @@ import (
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
+	"github.com/mysteriumnetwork/hyperv-node/vbox"
 )
 
 const (
@@ -482,7 +483,7 @@ func (m *Manager) WaitUntilGotIP(pollEvery, timeout time.Duration) error {
 				return errors.Wrap(err, "GetGuestKVP")
 			}
 			log.Println("GuestKVP>", m.Kvp)
-			ip := m.Kvp["NetworkAddressIPv4"]
+			ip := m.Kvp[vbox.KeyIP]
 			if ip != nil && ip != "" {
 				log.Println("VM IP:", ip)
 				return nil

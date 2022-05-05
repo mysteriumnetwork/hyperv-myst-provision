@@ -136,7 +136,9 @@ func (m *Manager) MonitorNetwork(networkChangeEv chan NetworkEv) error {
 
 		qParams := []wmi.Query{
 			&wmi.OrQuery{wmi.QueryFields{Key: "PhysicalAdapter", Value: true, Type: wmi.Equals}},
+			&wmi.AndQuery{wmi.QueryFields{Key: "MACAddress", Value: "NOT NULL", Type: wmi.Is}},
 		}
+
 		adapters, err := m.cimV2.Gwmi("Win32_NetworkAdapter", []string{}, qParams)
 		if err != nil {
 			return errors.Wrap(err, "Get")
@@ -187,6 +189,8 @@ func (m *Manager) MonitorNetwork(networkChangeEv chan NetworkEv) error {
 
 		// If old adapter lost its metric -- then change adapter
 		// IP has changed
+
+		//log.Info().Msgf("Monitor network !list >", m.MinAdapter.ID, minAdapter.ID, m.MinAdapter.IPs)
 		if m.MinAdapter.ID == minAdapter.ID && m.MinAdapter.IPs != minAdapter.IPs {
 			log.Info().Msgf("Monitor network > ! IP change detected")
 			m.MinAdapter = minAdapter

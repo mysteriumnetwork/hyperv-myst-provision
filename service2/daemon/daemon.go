@@ -53,6 +53,7 @@ func New(manager *vbox.Manager, cfg *model.Config) Daemon {
 // Start the daemon. Blocks.
 func (d *Daemon) Start(options transport2.Options) error {
 	defer util.PanicHandler("dialog_")
+	client.VmAgentInit()
 	log.Info().Msgf("Daemon !Start > %v", options)
 
 	networkChangeChn := make(chan vbox.NetworkEv)
@@ -72,6 +73,11 @@ func (d *Daemon) Start(options transport2.Options) error {
 				} else {
 					// call vm agent
 
+					ip, ok := d.mgr.Kvp[vbox.KeyIPInt].(string)
+					if ok && ip != "" {
+						log.Info().Msgf("%v", ip)
+						client.VmAgentRestartNetwork(ip)
+					}
 				}
 			}
 		}
@@ -225,7 +231,7 @@ func (d *Daemon) doOperation(op string, answer responder, m map[string]interface
 		}
 		log.Info().Msgf("%v", d.mgr.Kvp)
 
-		ip, ok := d.mgr.Kvp["NetworkAddressIPv4"].(string)
+		ip, ok := d.mgr.Kvp[vbox.KeyIPInt].(string)
 		if ok && ip != "" {
 			log.Info().Msgf("%v", ip)
 		}

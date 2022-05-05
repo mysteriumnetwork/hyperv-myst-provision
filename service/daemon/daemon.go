@@ -29,6 +29,7 @@ import (
 	"github.com/mysteriumnetwork/hyperv-node/model"
 	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
 	transport2 "github.com/mysteriumnetwork/hyperv-node/service/daemon/transport"
+	"github.com/mysteriumnetwork/hyperv-node/vbox"
 
 	"github.com/rs/zerolog/log"
 )
@@ -189,7 +190,7 @@ func (d *Daemon) dialog(conn io.ReadWriter) {
 			}
 			log.Info().Msgf("%v", d.mgr.Kvp)
 
-			ip, ok := d.mgr.Kvp["NetworkAddressIPv4"].(string)
+			ip, ok := d.mgr.Kvp[vbox.KeyIPInt].(string)
 			if ok && ip != "" {
 				log.Info().Msgf("%v", ip)
 			}

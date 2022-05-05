@@ -11,9 +11,8 @@ import (
 	"time"
 
 	consts "github.com/mysteriumnetwork/hyperv-node/const"
-
-	"github.com/mysteriumnetwork/hyperv-node/service/daemon/client"
-	"github.com/mysteriumnetwork/hyperv-node/service/util/winutil"
+	"github.com/mysteriumnetwork/hyperv-node/service2/daemon/client"
+	"github.com/mysteriumnetwork/hyperv-node/service2/util/winutil"
 	"github.com/mysteriumnetwork/hyperv-node/utils"
 	"github.com/pkg/errors"
 )
@@ -89,7 +88,7 @@ func (m *Manager) ImportKeystore(vi *VMInfo) error {
 		return errors.Wrap(err, "Keystore not found")
 	}
 
-	ip := m.Kvp["IP_int"].(string)
+	ip := m.Kvp[KeyIPInt].(string)
 	err := utils.Retry(5, time.Second, func() error {
 		return client.VmAgentGetState(ip)
 	})

@@ -280,7 +280,7 @@ func enableVM(conn net.Conn) error {
 	data := model.NewKVMap(kv["data"])
 	if data != nil {
 
-		ip, ok := data["IP"].(string)
+		ip, ok := data[vbox.KeyIP].(string)
 		if ok && ip != "" {
 			log.Print("Web UI is at http://" + ip + ":4449")
 

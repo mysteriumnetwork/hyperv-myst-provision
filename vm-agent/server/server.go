@@ -21,8 +21,8 @@ import (
 )
 
 var (
-	pr      *utils.ProcessRunner
-	version string
+	mystRunner *utils.ProcessRunner
+	version    string
 )
 
 func getLocalAddresses(intName string) (res []net.IP) {
@@ -86,7 +86,7 @@ func saveEnvMyst() {
 }
 
 func setMystCmdArgs() {
-	pr.SetArgs(BinMyst, "--keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
+	mystRunner.SetArgs(BinMyst, "--keystore.lightweight", "--local-service-discovery=false", "--launcher.ver="+version, "service", "--agreed-terms-and-conditions")
 }
 
 func checkKeystore() bool {
@@ -106,7 +106,7 @@ func Serve() {
 	}
 
 	w := PreStartWatcher()
-	pr = utils.NewProcessRunner()
+	mystRunner = utils.NewProcessRunner()
 	setMystCmdArgs()
 
 	l, err := vsock.Listen(30, nil)
@@ -134,7 +134,7 @@ func Serve() {
 		ctx.Done()
 
 		g.Add(func() error { return s.Wait() }, func(err error) { s.Stop() })
-		g.Add(func() error { return pr.Start(w) }, func(err error) { pr.Shutdown() })
+		g.Add(func() error { return mystRunner.Start(w) }, func(err error) { mystRunner.Shutdown() })
 		g.Add(func() error { return srv.Serve(listener1) }, func(err error) { srv.Shutdown(ctx) })
 		g.Add(func() error { return srv.Serve(listener2) }, func(err error) { srv.Shutdown(ctx) })
 
@@ -154,16 +154,16 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 			setMystCmdArgs()
 			if checkKeystore() {
-				pr.StopCommand()
-				pr.StartCommand()
+				mystRunner.StopCommand()
+				mystRunner.StartCommand()
 			}
 		}
 
 	case "/stop":
-		pr.StopCommand()
+		mystRunner.StopCommand()
 
 	case "/start":
-		pr.StartCommand()
+		mystRunner.StartCommand()
 
 	case "/state":
 		res := make(map[string]interface{})
@@ -181,8 +181,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("start", err)
 			return
 		}
-		pr.StopCommand()
-		pr.StartCommand()
+		mystRunner.StopCommand()
+		mystRunner.StartCommand()
 
 	case "/upload":
 		err := r.ParseMultipartForm(10 << 32) // grab the multipart form
@@ -214,5 +214,17 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+	case "/net-restart":
+		cmd := exec.Command("/bin/sh", "-c", "ifdown eth0; ifup eth0")
+		if err := cmd.Start(); err != nil {
+			log.Println("start", err)
+			return
+		}
+		if err := cmd.Wait(); err != nil {
+			log.Println("start", err)
+			return
+		}
+		mystRunner.StopCommand()
+		mystRunner.StartCommand()
 	}
 }

@@ -6,15 +6,32 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/mysteriumnetwork/hyperv-node/model"
 )
+
+func VmAgentInit() {
+	http.DefaultClient = &http.Client{
+		Transport: &http.Transport{
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 10 * time.Second,
+			//ResponseHeaderTimeout: 0 * time.Minute,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}
+
+}
 
 func VmAgentSetLauncherVersion(ip string) error {
 
@@ -51,7 +68,22 @@ func VmAgentGetState(ip string) error {
 	return nil
 }
 
+func VmAgentRestartNetwork(ip string) error {
+	ep := "http://" + ip + ":8080/net-restart"
+	resp, err := http.Get(ep)
+	if err != nil {
+		log.Err(err).Msg("Send http request")
+		return err
+	}
+	if resp.Status != "200" {
+		log.Error().Msgf("Status %v: %v", resp.Status, ep)
+	}
+	return nil
+}
+
 func VmAgentUpdateNode(ip string) error {
+	log.Info().Msg("VmAgentUpdateNode >")
+
 	ep := "http://" + ip + ":8080/update"
 	resp, err := http.Get(ep)
 	if err != nil {
